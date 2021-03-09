@@ -3,7 +3,7 @@ import * as github from '@actions/github'
 
 async function run(): Promise<void> {
   try {
-    const payload = JSON.stringify(github.context.payload, undefined, 2)
+    const payload = JSON.stringify(github.context.payload)
     core.debug(`The event payload: ${payload}`)
 
     core.setOutput('payload', payload)
