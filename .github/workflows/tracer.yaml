@@ -10,11 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: |
-          npm install
-      - run: |
-          npm run all
-      - uses: actions/checkout@v2
+      # - run: |
+      #     npm install
+      # - run: |
+      #     npm run all
+      # - uses: actions/checkout@v2
       - uses: ./
         id: action
         env:
