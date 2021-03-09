@@ -6,7 +6,7 @@ on:
       - edited
 
 jobs:
-  build: # make sure build/ci work properly
+  trace: # make sure build/ci work properly
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -14,14 +14,10 @@ jobs:
           npm install
       - run: |
           npm run all
-  detects:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - uses: actions/checkout@v2
       - uses: ./
         id: action
-        with:
-          milliseconds: 1000
+        env:
+          ACTIONS_RUNNER_DEBUG: true
       - name: Get the output payload
-        run: echo "The time was ${{ steps.action.outputs.payload }}"
+        run: echo "The payload was ${{ steps.action.outputs.payload }}"
