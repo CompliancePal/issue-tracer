@@ -15,6 +15,7 @@ async function run(): Promise<void> {
     core.debug(`The event payload: ${payload}`)
 
     core.setOutput('time', new Date().toTimeString())
+    core.setOutput('payload', payload)
   } catch (error) {
     core.setFailed(error.message)
   }
