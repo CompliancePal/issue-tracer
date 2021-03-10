@@ -1,28 +1,24 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
-import * as fs from 'fs'
 import {Issue} from './Issue'
+import openEventPayload from '../payloads/opened.json'
 
 describe('Issue', () => {
   describe('instance', () => {
     it('finds partsOf with local reference', () => {
-      const event = JSON.parse(
-        fs.readFileSync('events/opened.json', 'utf-8')
-      ) as IssuesOpenedEvent
+      const event = {...openEventPayload} as IssuesOpenedEvent
       event.issue.body = `# Title\n\n---\nsome: else\npartOf: #123\nkey: value\n---\n`
 
-      const issue = new Issue(event)
+      const issue = Issue.fromEventPayload(event)
 
       expect(issue.partOf).toBeTruthy()
       expect(issue.hasParent()).toBeTruthy()
     })
 
     it('finds partsOf with remote reference', () => {
-      const event = JSON.parse(
-        fs.readFileSync('events/opened.json', 'utf-8')
-      ) as IssuesOpenedEvent
+      const event = {...openEventPayload} as IssuesOpenedEvent
       event.issue.body = `# Title\n\n---\nsome: else\npartOf: u/r#123\nkey: value\n---\n`
 
-      const issue = new Issue(event)
+      const issue = Issue.fromEventPayload(event)
 
       expect(issue.partOf).toBeTruthy()
       expect(issue.hasParent()).toBeTruthy()

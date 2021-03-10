@@ -1,12 +1,15 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
+import {Issue} from './domain/Issue'
 
 async function run(): Promise<void> {
   try {
-    const payload = JSON.stringify(github.context.payload)
-    core.debug(`The event payload: ${payload}`)
+    const issue = Issue.fromEventPayload(
+      github.context.payload as IssuesOpenedEvent
+    )
 
-    core.setOutput('payload', payload)
+    core.setOutput('partOf', issue.partOf)
   } catch (error) {
     core.setFailed(error.message)
   }

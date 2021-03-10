@@ -1,4 +1,7 @@
-import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
+import {
+  IssuesOpenedEvent,
+  Issue as GitHubIssue
+} from '@octokit/webhooks-definitions/schema'
 import unified from 'unified'
 import markdown from 'remark-parse'
 import frontmatter from 'remark-frontmatter'
@@ -13,26 +16,34 @@ interface IPartOf {
   id: string
 }
 
-export class Issue extends Entity<IssuesOpenedEvent> {
+export class Issue extends Entity<GitHubIssue> {
   readonly partOf?: IPartOf
 
-  constructor(event: IssuesOpenedEvent) {
-    super(event)
+  protected constructor(issue: GitHubIssue) {
+    super(issue)
 
-    this.props = event
+    this.props = issue
     this.partOf = this.detectsPartOf()
   }
 
   get labels(): string[] {
-    return Array.from(this.props.issue.labels || []).map(label => label.name)
+    return Array.from(this.props.labels || []).map(label => label.name)
   }
 
   get id(): number {
-    return this.props.issue.id
+    return this.props.id
   }
 
   hasParent(): boolean {
     return this.partOf !== undefined
+  }
+
+  static fromEventPayload(event: IssuesOpenedEvent): Issue {
+    return new Issue(event.issue)
+  }
+
+  static fromApiPayload(payload: GitHubIssue): Issue {
+    return new Issue(payload)
   }
 
   static parsePartOf(raw: string): IPartOf | undefined {
@@ -85,7 +96,7 @@ export class Issue extends Entity<IssuesOpenedEvent> {
         }
       })
       .use(stringify)
-      .processSync(this.props.issue.body)
+      .processSync(this.props.body)
 
     return partOf
   }
