@@ -18,6 +18,6 @@ jobs:
       - uses: ./
         id: action
         env:
-          ACTIONS_RUNNER_DEBUG: true
+          ACTIONS_STEP_DEBUG: true
       - name: Get the output payload
         run: echo "The payload was ${{ steps.action.outputs.payload }}"
