@@ -1,5 +1,5 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
-import {Issue} from './Issue'
+import {IPartOf, Issue} from './Issue'
 import openEventPayload from '../payloads/opened.json'
 
 describe('Issue', () => {
@@ -28,18 +28,16 @@ describe('Issue', () => {
   describe('[static] parsePartOf', () => {
     it('finds local reference', () => {
       expect(Issue.parsePartOf('#123')).toEqual({
-        user: undefined,
-        repo: undefined,
-        id: '123'
-      })
+        issue_number: '123'
+      } as IPartOf)
     })
 
     it('finds remote reference', () => {
       expect(Issue.parsePartOf('u-x/r#123')).toEqual({
-        user: 'u-x',
+        owner: 'u-x',
         repo: 'r',
-        id: '123'
-      })
+        issue_number: '123'
+      } as IPartOf)
     })
 
     it('does not find invalid ', () => {

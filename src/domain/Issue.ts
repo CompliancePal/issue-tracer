@@ -10,10 +10,10 @@ import YAML from 'yaml'
 import visit from 'unist-util-visit'
 import {Entity} from './Entity'
 
-interface IPartOf {
-  user: string
-  repo: string
-  id: string
+export interface IPartOf {
+  owner?: string
+  repo?: string
+  issue_number: string
 }
 
 export class Issue extends Entity<GitHubIssue> {
@@ -52,9 +52,9 @@ export class Issue extends Entity<GitHubIssue> {
 
     return res
       ? {
-          user: res[2],
+          owner: res[2],
           repo: res[3],
-          id: res[4]
+          issue_number: res[4]
         }
       : undefined
   }

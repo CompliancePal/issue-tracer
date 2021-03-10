@@ -5,11 +5,24 @@ import {Issue} from './domain/Issue'
 
 async function run(): Promise<void> {
   try {
-    const issue = Issue.fromEventPayload(
-      github.context.payload as IssuesOpenedEvent
-    )
+    let issue
+    switch (github.context.payload.action) {
+      case 'edited':
+      case 'opened':
+        issue = Issue.fromEventPayload(
+          github.context.payload as IssuesOpenedEvent
+        )
 
-    core.setOutput('partOf', issue.partOf)
+        if (issue.partOf === undefined) {
+          return
+        }
+
+        // TODO: get the partOf issue
+
+        core.setOutput('partOf', issue.partOf)
+        break
+      default:
+    }
   } catch (error) {
     core.setFailed(error.message)
   }

@@ -1,7 +1,11 @@
-name: 'issue-tracer'
+name: 'Issue Tracer'
 description: 'Traceability with issues'
 author: 'CompliancePal'
 
 runs:
   using: 'node12'
   main: 'dist/index.js'
+
+branding:
+  color: 'green'
+  icon: 'check-square'
