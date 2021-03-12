@@ -46,7 +46,7 @@ export class Issue extends Entity<GitHubIssue> {
     return this.props.id
   }
 
-  get issue_number(): number {
+  get number(): number {
     return this.props.number
   }
 

@@ -32,7 +32,7 @@ export class IssuesRepo {
     await gh.issues.update({
       owner: issue.owner,
       repo: issue.repo,
-      issue_number: issue.id,
+      issue_number: issue.number,
       body: issue.body
     })
   }

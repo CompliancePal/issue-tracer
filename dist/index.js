@@ -56,7 +56,7 @@ class Issue extends Entity_1.Entity {
     get id() {
         return this.props.id;
     }
-    get issue_number() {
+    get number() {
         return this.props.number;
     }
     hasParent() {
@@ -263,7 +263,7 @@ class IssuesRepo {
             yield gh.issues.update({
                 owner: issue.owner,
                 repo: issue.repo,
-                issue_number: issue.id,
+                issue_number: issue.number,
                 body: issue.body
             });
         });
