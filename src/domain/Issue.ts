@@ -102,8 +102,8 @@ export class Issue extends Entity<GitHubIssue> {
         {
           type: 'yaml',
           marker: {
-            open: '#',
-            close: '#'
+            open: '-',
+            close: '-'
           },
           anywhere: true
         }
