@@ -39,9 +39,9 @@ async function run(): Promise<void> {
         }
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
-        relatedIssue.body = `- [${issue.isClosed ? 'x' : ' '}] ${
-          issue.title
-        } (#${issue.number})`
+        relatedIssue.body = `## Traceability\n\n### Related issues\n\n- [${
+          issue.isClosed ? 'x' : ' '
+        }] ${issue.title} (#${issue.number})`
 
         // TODO: update the related issues section with this issue
         await repo.save(relatedIssue)
