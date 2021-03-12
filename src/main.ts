@@ -45,6 +45,7 @@ async function run(): Promise<void> {
 
         // TODO: update the related issues section with this issue
         await repo.save(relatedIssue)
+        core.info(`Related issue ${relatedIssue.number} updated sucessfuly`)
 
         core.setOutput('partOf', issue.partOf)
         break
