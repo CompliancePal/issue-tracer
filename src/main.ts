@@ -4,7 +4,14 @@ import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {Issue} from './domain/Issue'
 import {IssuesRepo} from './repo/Issues'
 
+const ghToken = process.env.GITHUB_TOKEN
+
 async function run(): Promise<void> {
+  if (ghToken === undefined) {
+    core.setFailed(`GITHUB_TOKEN not provided`)
+    return
+  }
+
   try {
     let issue, repo, relatedIssue
 
@@ -14,7 +21,7 @@ async function run(): Promise<void> {
         issue = Issue.fromEventPayload(
           github.context.payload as IssuesOpenedEvent
         )
-        core.info(`Issue ${issue.id} parsed successfuly`)
+        core.info(`Issue ${issue.number} parsed successfuly`)
 
         if (issue.partOf === undefined) {
           core.info('Issue is not partOf other issues')
@@ -22,7 +29,7 @@ async function run(): Promise<void> {
         }
 
         // TODO: get the related issue using the repo
-        repo = new IssuesRepo(core.getInput('repo-token'))
+        repo = new IssuesRepo(ghToken)
 
         relatedIssue = await repo.get(issue.partOf)
 
@@ -30,7 +37,7 @@ async function run(): Promise<void> {
           core.setFailed(`Action could not find the related issue `)
           return
         }
-        core.info(`Related issue ${relatedIssue.id} found sucessfuly`)
+        core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
         relatedIssue.body = `${relatedIssue.body}\n\nupdated`
 

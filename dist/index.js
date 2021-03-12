@@ -160,27 +160,32 @@ const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
 const Issues_1 = __webpack_require__(2724);
+const ghToken = process.env.GITHUB_TOKEN;
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
+        if (ghToken === undefined) {
+            core.setFailed(`GITHUB_TOKEN not provided`);
+            return;
+        }
         try {
             let issue, repo, relatedIssue;
             switch (github.context.payload.action) {
                 case 'edited':
                 case 'opened':
                     issue = Issue_1.Issue.fromEventPayload(github.context.payload);
-                    core.info(`Issue ${issue.id} parsed successfuly`);
+                    core.info(`Issue ${issue.number} parsed successfuly`);
                     if (issue.partOf === undefined) {
                         core.info('Issue is not partOf other issues');
                         return;
                     }
                     // TODO: get the related issue using the repo
-                    repo = new Issues_1.IssuesRepo(core.getInput('repo-token'));
+                    repo = new Issues_1.IssuesRepo(ghToken);
                     relatedIssue = yield repo.get(issue.partOf);
                     if (relatedIssue === undefined) {
                         core.setFailed(`Action could not find the related issue `);
                         return;
                     }
-                    core.info(`Related issue ${relatedIssue.id} found sucessfuly`);
+                    core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
                     relatedIssue.body = `${relatedIssue.body}\n\nupdated`;
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
