@@ -165,7 +165,9 @@ function run() {
                 case 'edited':
                 case 'opened':
                     issue = Issue_1.Issue.fromEventPayload(github.context.payload);
+                    core.info(`Issue ${issue.id} parsed successfuly`);
                     if (issue.partOf === undefined) {
+                        core.info('Issue is not partOf other issues');
                         return;
                     }
                     // TODO: get the related issue using the repo
@@ -175,6 +177,7 @@ function run() {
                         core.setFailed(`Action could not find the related issue `);
                         return;
                     }
+                    core.info(`Related issue ${relatedIssue.id} found sucessfuly`);
                     relatedIssue.body = `${relatedIssue.body}\n\nupdated`;
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);

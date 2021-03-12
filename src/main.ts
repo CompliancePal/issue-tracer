@@ -7,14 +7,17 @@ import {IssuesRepo} from './repo/Issues'
 async function run(): Promise<void> {
   try {
     let issue, repo, relatedIssue
+
     switch (github.context.payload.action) {
       case 'edited':
       case 'opened':
         issue = Issue.fromEventPayload(
           github.context.payload as IssuesOpenedEvent
         )
+        core.info(`Issue ${issue.id} parsed successfuly`)
 
         if (issue.partOf === undefined) {
+          core.info('Issue is not partOf other issues')
           return
         }
 
@@ -27,6 +30,7 @@ async function run(): Promise<void> {
           core.setFailed(`Action could not find the related issue `)
           return
         }
+        core.info(`Related issue ${relatedIssue.id} found sucessfuly`)
 
         relatedIssue.body = `${relatedIssue.body}\n\nupdated`
 
