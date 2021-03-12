@@ -37,10 +37,18 @@ const yaml_1 = __importDefault(__webpack_require__(3552));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
 class Issue extends Entity_1.Entity {
-    constructor(issue) {
+    constructor(issue, owner, repo) {
         super(issue);
         this.props = issue;
+        this.owner = owner;
+        this.repo = repo;
         this.partOf = this.detectsPartOf();
+    }
+    get body() {
+        return this.props.body;
+    }
+    set body(content) {
+        this.props.body = content;
     }
     get labels() {
         return Array.from(this.props.labels || []).map(label => label.name);
@@ -52,19 +60,21 @@ class Issue extends Entity_1.Entity {
         return this.partOf !== undefined;
     }
     static fromEventPayload(event) {
-        return new Issue(event.issue);
+        const owner = event.repository.owner.login;
+        const repo = event.repository.name;
+        return new Issue(event.issue, owner, repo);
     }
-    static fromApiPayload(payload) {
-        return new Issue(payload);
+    static fromApiPayload(payload, owner, repo) {
+        return new Issue(payload, owner, repo);
     }
-    static parsePartOf(raw) {
+    static parsePartOf(raw, owner, repo) {
         const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
         const res = raw.match(re);
         return res
             ? {
-                user: res[2],
-                repo: res[3],
-                id: res[4]
+                owner: res[2] ? res[2] : owner,
+                repo: res[3] ? res[3] : repo,
+                issue_number: parseInt(res[4])
             }
             : undefined;
     }
@@ -94,7 +104,7 @@ class Issue extends Entity_1.Entity {
             return tree => {
                 unist_util_visit_1.default(tree, 'yaml', node => {
                     if (node.data && node.data.partOf) {
-                        partOf = Issue.parsePartOf(node.data.partOf);
+                        partOf = Issue.parsePartOf(node.data.partOf, this.owner, this.repo);
                     }
                 });
             };
@@ -146,11 +156,33 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
+const Issues_1 = __webpack_require__(2724);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const issue = Issue_1.Issue.fromEventPayload(github.context.payload);
-            core.setOutput('partOf', issue.partOf);
+            let issue, repo, relatedIssue;
+            switch (github.context.payload.action) {
+                case 'edited':
+                case 'opened':
+                    issue = Issue_1.Issue.fromEventPayload(github.context.payload);
+                    if (issue.partOf === undefined) {
+                        return;
+                    }
+                    // TODO: get the related issue using the repo
+                    repo = new Issues_1.IssuesRepo(core.getInput('repo-token'));
+                    relatedIssue = yield repo.get(issue.partOf);
+                    if (relatedIssue === undefined) {
+                        core.setFailed(`Action could not find the related issue `);
+                        return;
+                    }
+                    relatedIssue.body = `${relatedIssue.body}\n\nupdated`;
+                    // TODO: update the related issues section with this issue
+                    yield repo.save(relatedIssue);
+                    core.setOutput('partOf', issue.partOf);
+                    break;
+                case 'closed':
+                default:
+            }
         }
         catch (error) {
             core.setFailed(error.message);
@@ -158,6 +190,80 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 2724:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.IssuesRepo = void 0;
+const github = __importStar(__webpack_require__(5438));
+const Issue_1 = __webpack_require__(2422);
+class IssuesRepo {
+    constructor(token) {
+        this.token = token;
+    }
+    get({ owner, repo, issue_number }) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const gh = github.getOctokit(this.token);
+                const response = yield gh.issues.get({
+                    owner,
+                    repo,
+                    issue_number
+                });
+                return Issue_1.Issue.fromApiPayload(response.data, owner, repo);
+            }
+            catch (error) {
+                return;
+            }
+        });
+    }
+    save(issue) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const gh = github.getOctokit(this.token);
+            yield gh.issues.update({
+                owner: issue.owner,
+                repo: issue.repo,
+                issue_number: issue.id,
+                body: issue.body
+            });
+        });
+    }
+}
+exports.IssuesRepo = IssuesRepo;
 
 
 /***/ }),
