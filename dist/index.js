@@ -59,6 +59,12 @@ class Issue extends Entity_1.Entity {
     get number() {
         return this.props.number;
     }
+    get isClosed() {
+        return this.props.state === 'closed';
+    }
+    get title() {
+        return this.props.title;
+    }
     hasParent() {
         return this.partOf !== undefined;
     }
@@ -186,7 +192,7 @@ function run() {
                         return;
                     }
                     core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
-                    relatedIssue.body = `${relatedIssue.body}\n\nupdated`;
+                    relatedIssue.body = `- [${issue.isClosed ? 'x' : ' '}] ${issue.title} (#${issue.number})`;
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
                     core.setOutput('partOf', issue.partOf);

@@ -50,6 +50,14 @@ export class Issue extends Entity<GitHubIssue> {
     return this.props.number
   }
 
+  get isClosed(): boolean {
+    return this.props.state === 'closed'
+  }
+
+  get title(): string {
+    return this.props.title
+  }
+
   hasParent(): boolean {
     return this.partOf !== undefined
   }
