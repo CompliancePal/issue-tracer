@@ -192,7 +192,7 @@ function run() {
                         return;
                     }
                     core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
-                    relatedIssue.body = `## Traceability\n\n### Related issues\n\n- [${issue.isClosed ? 'x' : ' '}] ${issue.title} (#${issue.number})`;
+                    relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n- [${issue.isClosed ? 'x' : ' '}] ${issue.title} (#${issue.number})`;
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
                     core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);

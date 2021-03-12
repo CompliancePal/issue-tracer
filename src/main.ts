@@ -39,7 +39,7 @@ async function run(): Promise<void> {
         }
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
-        relatedIssue.body = `## Traceability\n\n### Related issues\n\n- [${
+        relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n- [${
           issue.isClosed ? 'x' : ' '
         }] ${issue.title} (#${issue.number})`
 
