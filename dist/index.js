@@ -56,6 +56,9 @@ class Issue extends Entity_1.Entity {
     get id() {
         return this.props.id;
     }
+    get issue_number() {
+        return this.props.number;
+    }
     hasParent() {
         return this.partOf !== undefined;
     }

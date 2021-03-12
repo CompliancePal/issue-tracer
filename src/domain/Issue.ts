@@ -46,6 +46,10 @@ export class Issue extends Entity<GitHubIssue> {
     return this.props.id
   }
 
+  get issue_number(): number {
+    return this.props.number
+  }
+
   hasParent(): boolean {
     return this.partOf !== undefined
   }
