@@ -18,6 +18,8 @@ async function run(): Promise<void> {
     switch (github.context.payload.action) {
       case 'edited':
       case 'opened':
+      case 'closed':
+      case 'reopened':
         issue = Issue.fromEventPayload(
           github.context.payload as IssuesOpenedEvent
         )
@@ -39,7 +41,7 @@ async function run(): Promise<void> {
         }
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
-        relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n- [${
+        relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [${
           issue.isClosed ? 'x' : ' '
         }] ${issue.title} (#${issue.number})`
 
@@ -49,7 +51,6 @@ async function run(): Promise<void> {
 
         core.setOutput('partOf', issue.partOf)
         break
-      case 'closed':
       default:
     }
   } catch (error) {

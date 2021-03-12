@@ -178,6 +178,8 @@ function run() {
             switch (github.context.payload.action) {
                 case 'edited':
                 case 'opened':
+                case 'closed':
+                case 'reopened':
                     issue = Issue_1.Issue.fromEventPayload(github.context.payload);
                     core.info(`Issue ${issue.number} parsed successfuly`);
                     if (issue.partOf === undefined) {
@@ -192,13 +194,12 @@ function run() {
                         return;
                     }
                     core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
-                    relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n- [${issue.isClosed ? 'x' : ' '}] ${issue.title} (#${issue.number})`;
+                    relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [${issue.isClosed ? 'x' : ' '}] ${issue.title} (#${issue.number})`;
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
                     core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);
                     core.setOutput('partOf', issue.partOf);
                     break;
-                case 'closed':
                 default:
             }
         }
