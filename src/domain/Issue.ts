@@ -105,6 +105,21 @@ export class Issue extends Entity<GitHubIssue> {
     return this.partOf !== undefined
   }
 
+  equals(issue: Issue): boolean {
+    return (
+      this.number === issue.number &&
+      this.owner === issue.owner &&
+      this.repo === issue.repo
+    )
+  }
+
+  /**
+   * Is cross reference when the owner or the repo name are different
+   */
+  isCrossReference(issue: Issue): boolean {
+    return this.owner !== issue.owner || this.repo !== issue.repo
+  }
+
   addSubtask(subtask: Subtask): void {
     this.subtasks.set(subtask.id, subtask)
 

@@ -91,6 +91,17 @@ class Issue extends Entity_1.Entity {
     hasParent() {
         return this.partOf !== undefined;
     }
+    equals(issue) {
+        return (this.number === issue.number &&
+            this.owner === issue.owner &&
+            this.repo === issue.repo);
+    }
+    /**
+     * Is cross reference when the owner or the repo name are different
+     */
+    isCrossReference(issue) {
+        return this.owner !== issue.owner || this.repo !== issue.repo;
+    }
     addSubtask(subtask) {
         this.subtasks.set(subtask.id, subtask);
         this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(this.subtasks.values())
