@@ -6,8 +6,11 @@ import unified from 'unified'
 import markdown from 'remark-parse'
 import frontmatter from 'remark-frontmatter'
 import stringify from 'remark-stringify'
+import gfm from 'remark-gfm'
 import YAML from 'yaml'
 import visit from 'unist-util-visit'
+// import filter from 'unist-util-filter'
+// import {Parent} from 'unist'
 import {Entity} from './Entity'
 
 export interface IPartOf {
@@ -16,10 +19,49 @@ export interface IPartOf {
   issue_number: number
 }
 
+interface Subtask {
+  id: string
+  title: string
+  closed: boolean
+  removed: boolean
+}
+
 export class Issue extends Entity<GitHubIssue> {
+  static fromEventPayload(event: IssuesOpenedEvent): Issue {
+    const owner = event.repository.owner.login
+    const repo = event.repository.name
+    return new Issue(event.issue, owner, repo)
+  }
+
+  static fromApiPayload(
+    payload: GitHubIssue,
+    owner: string,
+    repo: string
+  ): Issue {
+    return new Issue(payload, owner, repo)
+  }
+
+  static parsePartOf(
+    raw: string,
+    owner: string,
+    repo: string
+  ): IPartOf | undefined {
+    const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/
+    const res = raw.match(re)
+
+    return res
+      ? {
+          owner: res[2] ? res[2] : owner,
+          repo: res[3] ? res[3] : repo,
+          issue_number: parseInt(res[4])
+        }
+      : undefined
+  }
+
   readonly partOf?: IPartOf
   readonly owner: string
   readonly repo: string
+  subtasks: Subtask[]
 
   protected constructor(issue: GitHubIssue, owner: string, repo: string) {
     super(issue)
@@ -28,6 +70,7 @@ export class Issue extends Entity<GitHubIssue> {
     this.owner = owner
     this.repo = repo
     this.partOf = this.detectsPartOf()
+    this.subtasks = this.detectsSubIssues()
   }
 
   get body(): string {
@@ -62,35 +105,15 @@ export class Issue extends Entity<GitHubIssue> {
     return this.partOf !== undefined
   }
 
-  static fromEventPayload(event: IssuesOpenedEvent): Issue {
-    const owner = event.repository.owner.login
-    const repo = event.repository.name
-    return new Issue(event.issue, owner, repo)
-  }
+  addSubtask(subtask: Subtask): void {
+    this.subtasks.push(subtask)
 
-  static fromApiPayload(
-    payload: GitHubIssue,
-    owner: string,
-    repo: string
-  ): Issue {
-    return new Issue(payload, owner, repo)
-  }
-
-  static parsePartOf(
-    raw: string,
-    owner: string,
-    repo: string
-  ): IPartOf | undefined {
-    const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/
-    const res = raw.match(re)
-
-    return res
-      ? {
-          owner: res[2] ? res[2] : owner,
-          repo: res[3] ? res[3] : repo,
-          issue_number: parseInt(res[4])
-        }
-      : undefined
+    this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${this.subtasks
+      .map(
+        _subtask =>
+          `- [${_subtask.closed ? 'x' : ''}] ${_subtask.title} (${_subtask.id})`
+      )
+      .join('\n')}`
   }
 
   protected detectsPartOf(): IPartOf | undefined {
@@ -137,5 +160,62 @@ export class Issue extends Entity<GitHubIssue> {
       .processSync(this.props.body)
 
     return partOf
+  }
+
+  protected detectsSubIssues(): Subtask[] {
+    const subtasks: Subtask[] = []
+
+    // const isMyHeading = (
+    //   heading: Parent,
+    //   level: number,
+    //   value: string
+    // ): boolean => {
+    //   return heading.depth === level && heading.children[0].value === value
+    // }
+
+    unified()
+      .use(markdown)
+      .use(gfm)
+      .use(stringify)
+      .use(() => {
+        return tree => {
+          // let h1 = 0
+          // let h2 = 0
+
+          // visit(tree, 'heading', heading => {
+          //   if (isMyHeading(heading as Parent, 2, 'Traceability')) {
+          //     h1++
+          //   }
+
+          //   if (
+          //     h1 === 1 &&
+          //     isMyHeading(heading as Parent, 3, 'Related issues')
+          //   ) {
+          //     h2++
+          //   }
+          // })
+
+          // console.log(h1, h2)
+
+          visit(tree, 'list', list => {
+            visit(list, 'listItem', item => {
+              visit(item, 'paragraph', p => {
+                visit(p, 'text', text => {
+                  // console.log(text.value)
+                  subtasks.push({
+                    id: (text.value as string).split('(')[1].replace(')', ''),
+                    title: (text.value as string).split(' (')[0],
+                    removed: false,
+                    closed: !!item.checked
+                  })
+                })
+              })
+            })
+          })
+        }
+      })
+      .processSync(this.props.body)
+
+    return subtasks
   }
 }

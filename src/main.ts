@@ -41,9 +41,12 @@ async function run(): Promise<void> {
         }
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
-        relatedIssue.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [${
-          issue.isClosed ? 'x' : ' '
-        }] ${issue.title} (#${issue.number})`
+        relatedIssue.addSubtask({
+          id: `#${issue.number}`,
+          title: issue.title,
+          closed: issue.isClosed,
+          removed: false
+        })
 
         // TODO: update the related issues section with this issue
         await repo.save(relatedIssue)

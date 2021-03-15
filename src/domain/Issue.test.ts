@@ -27,6 +27,23 @@ describe('Issue', () => {
       expect(issue.partOf).toBeTruthy()
       expect(issue.hasParent()).toBeTruthy()
     })
+
+    it.only('finds subtasks', () => {
+      const event = {
+        ...openEventPayload,
+        ...{
+          issue: {
+            body:
+              '---\npartOf: #5\n\n---\n## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [x] Closed title (#1)\n\n- [ ] Open title (#2)\n## Related issues\n'
+          }
+        }
+      } as IssuesOpenedEvent
+
+      const issue = Issue.fromEventPayload(event)
+      expect(issue).toBeTruthy()
+
+      // console.log(issue)
+    })
   })
 
   describe('[static] parsePartOf', () => {
