@@ -111,7 +111,9 @@ export class Issue extends Entity<GitHubIssue> {
     this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${this.subtasks
       .map(
         _subtask =>
-          `- [${_subtask.closed ? 'x' : ''}] ${_subtask.title} (${_subtask.id})`
+          `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${
+            _subtask.id
+          })`
       )
       .join('\n')}`
   }

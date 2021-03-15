@@ -94,7 +94,7 @@ class Issue extends Entity_1.Entity {
     addSubtask(subtask) {
         this.subtasks.push(subtask);
         this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${this.subtasks
-            .map(_subtask => `- [${_subtask.closed ? 'x' : ''}] ${_subtask.title} (${_subtask.id})`)
+            .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${_subtask.id})`)
             .join('\n')}`;
     }
     detectsPartOf() {
