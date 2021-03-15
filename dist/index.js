@@ -92,8 +92,8 @@ class Issue extends Entity_1.Entity {
         return this.partOf !== undefined;
     }
     addSubtask(subtask) {
-        this.subtasks.push(subtask);
-        this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${this.subtasks
+        this.subtasks.set(subtask.id, subtask);
+        this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(this.subtasks.values())
             .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${_subtask.id})`)
             .join('\n')}`;
     }
@@ -133,7 +133,7 @@ class Issue extends Entity_1.Entity {
         return partOf;
     }
     detectsSubIssues() {
-        const subtasks = [];
+        const subtasks = new Map();
         // const isMyHeading = (
         //   heading: Parent,
         //   level: number,
@@ -165,9 +165,12 @@ class Issue extends Entity_1.Entity {
                     unist_util_visit_1.default(list, 'listItem', item => {
                         unist_util_visit_1.default(item, 'paragraph', p => {
                             unist_util_visit_1.default(p, 'text', text => {
+                                const id = text.value
+                                    .split('(')[1]
+                                    .replace(')', '');
                                 // console.log(text.value)
-                                subtasks.push({
-                                    id: text.value.split('(')[1].replace(')', ''),
+                                subtasks.set(id, {
+                                    id,
                                     title: text.value.split(' (')[0],
                                     removed: false,
                                     closed: !!item.checked

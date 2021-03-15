@@ -61,7 +61,7 @@ export class Issue extends Entity<GitHubIssue> {
   readonly partOf?: IPartOf
   readonly owner: string
   readonly repo: string
-  subtasks: Subtask[]
+  subtasks: Map<string, Subtask>
 
   protected constructor(issue: GitHubIssue, owner: string, repo: string) {
     super(issue)
@@ -106,9 +106,11 @@ export class Issue extends Entity<GitHubIssue> {
   }
 
   addSubtask(subtask: Subtask): void {
-    this.subtasks.push(subtask)
+    this.subtasks.set(subtask.id, subtask)
 
-    this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${this.subtasks
+    this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
+      this.subtasks.values()
+    )
       .map(
         _subtask =>
           `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${
@@ -164,8 +166,8 @@ export class Issue extends Entity<GitHubIssue> {
     return partOf
   }
 
-  protected detectsSubIssues(): Subtask[] {
-    const subtasks: Subtask[] = []
+  protected detectsSubIssues(): Map<string, Subtask> {
+    const subtasks = new Map<string, Subtask>()
 
     // const isMyHeading = (
     //   heading: Parent,
@@ -203,9 +205,12 @@ export class Issue extends Entity<GitHubIssue> {
             visit(list, 'listItem', item => {
               visit(item, 'paragraph', p => {
                 visit(p, 'text', text => {
+                  const id = (text.value as string)
+                    .split('(')[1]
+                    .replace(')', '')
                   // console.log(text.value)
-                  subtasks.push({
-                    id: (text.value as string).split('(')[1].replace(')', ''),
+                  subtasks.set(id, {
+                    id,
                     title: (text.value as string).split(' (')[0],
                     removed: false,
                     closed: !!item.checked
