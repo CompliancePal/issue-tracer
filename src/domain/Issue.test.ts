@@ -28,21 +28,45 @@ describe('Issue', () => {
       expect(issue.hasParent()).toBeTruthy()
     })
 
-    it.only('finds subtasks', () => {
+    it('finds subtasks', () => {
       const event = {
         ...openEventPayload,
         ...{
           issue: {
             body:
-              '---\npartOf: #5\n\n---\n## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [x] Closed title (#1)\n\n- [ ] Open title (#2)\n## Related issues\n'
+              '---\npartOf: #5\n\n---\n## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [x] Closed title (#1)\n\n- [ ] Open title (#2)'
           }
         }
       } as IssuesOpenedEvent
 
       const issue = Issue.fromEventPayload(event)
-      expect(issue).toBeTruthy()
 
-      // console.log(issue)
+      expect(issue.subtasks).toEqual(
+        new Map([
+          [
+            '#1',
+            {
+              closed: true,
+              id: '1',
+              removed: false,
+              title: 'Closed title',
+              owner: 'CompliancePal',
+              repo: 'issue-tracer'
+            }
+          ],
+          [
+            '#2',
+            {
+              closed: false,
+              id: '2',
+              removed: false,
+              title: 'Open title',
+              owner: 'CompliancePal',
+              repo: 'issue-tracer'
+            }
+          ]
+        ])
+      )
     })
   })
 

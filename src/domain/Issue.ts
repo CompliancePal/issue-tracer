@@ -24,6 +24,16 @@ interface Subtask {
   title: string
   closed: boolean
   removed: boolean
+  repo: string
+  owner: string
+}
+
+const subtaskToString = (
+  subtask: Subtask,
+  isCrossReference: boolean
+): string => {
+  const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : ''
+  return `(${reference}#${subtask.id})`
 }
 
 export class Issue extends Entity<GitHubIssue> {
@@ -93,7 +103,7 @@ export class Issue extends Entity<GitHubIssue> {
     return this.props.number
   }
 
-  get isClosed(): boolean {
+  get closed(): boolean {
     return this.props.state === 'closed'
   }
 
@@ -116,7 +126,7 @@ export class Issue extends Entity<GitHubIssue> {
   /**
    * Is cross reference when the owner or the repo name are different
    */
-  isCrossReference(issue: Issue): boolean {
+  isCrossReference(issue: Issue | Subtask): boolean {
     return this.owner !== issue.owner || this.repo !== issue.repo
   }
 
@@ -128,9 +138,9 @@ export class Issue extends Entity<GitHubIssue> {
     )
       .map(
         _subtask =>
-          `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${
-            _subtask.id
-          })`
+          `- [${_subtask.closed ? 'x' : ' '}] ${
+            _subtask.title
+          } (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`
       )
       .join('\n')}`
   }
@@ -220,16 +230,26 @@ export class Issue extends Entity<GitHubIssue> {
             visit(list, 'listItem', item => {
               visit(item, 'paragraph', p => {
                 visit(p, 'text', text => {
-                  const id = (text.value as string)
+                  const raw = (text.value as string)
                     .split('(')[1]
                     .replace(')', '')
-                  // console.log(text.value)
-                  subtasks.set(id, {
-                    id,
-                    title: (text.value as string).split(' (')[0],
-                    removed: false,
-                    closed: !!item.checked
-                  })
+
+                  const title = (text.value as string).split(' (')[0]
+
+                  const parsed = Issue.parsePartOf(raw, this.owner, this.repo)
+
+                  if (parsed) {
+                    const {issue_number, owner, repo} = parsed
+
+                    subtasks.set(raw, {
+                      id: issue_number.toString(),
+                      title,
+                      removed: false,
+                      closed: !!item.checked,
+                      owner,
+                      repo
+                    })
+                  }
                 })
               })
             })

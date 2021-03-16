@@ -39,6 +39,10 @@ const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 // import filter from 'unist-util-filter'
 // import {Parent} from 'unist'
 const Entity_1 = __webpack_require__(6217);
+const subtaskToString = (subtask, isCrossReference) => {
+    const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
+    return `(${reference}#${subtask.id})`;
+};
 class Issue extends Entity_1.Entity {
     constructor(issue, owner, repo) {
         super(issue);
@@ -82,7 +86,7 @@ class Issue extends Entity_1.Entity {
     get number() {
         return this.props.number;
     }
-    get isClosed() {
+    get closed() {
         return this.props.state === 'closed';
     }
     get title() {
@@ -105,7 +109,7 @@ class Issue extends Entity_1.Entity {
     addSubtask(subtask) {
         this.subtasks.set(subtask.id, subtask);
         this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(this.subtasks.values())
-            .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${_subtask.id})`)
+            .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
             .join('\n')}`;
     }
     detectsPartOf() {
@@ -176,16 +180,22 @@ class Issue extends Entity_1.Entity {
                     unist_util_visit_1.default(list, 'listItem', item => {
                         unist_util_visit_1.default(item, 'paragraph', p => {
                             unist_util_visit_1.default(p, 'text', text => {
-                                const id = text.value
+                                const raw = text.value
                                     .split('(')[1]
                                     .replace(')', '');
-                                // console.log(text.value)
-                                subtasks.set(id, {
-                                    id,
-                                    title: text.value.split(' (')[0],
-                                    removed: false,
-                                    closed: !!item.checked
-                                });
+                                const title = text.value.split(' (')[0];
+                                const parsed = Issue.parsePartOf(raw, this.owner, this.repo);
+                                if (parsed) {
+                                    const { issue_number, owner, repo } = parsed;
+                                    subtasks.set(raw, {
+                                        id: issue_number.toString(),
+                                        title,
+                                        removed: false,
+                                        closed: !!item.checked,
+                                        owner,
+                                        repo
+                                    });
+                                }
                             });
                         });
                     });
@@ -268,10 +278,12 @@ function run() {
                     }
                     core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
                     relatedIssue.addSubtask({
-                        id: `#${issue.number}`,
+                        id: issue.number.toString(),
                         title: issue.title,
-                        closed: issue.isClosed,
-                        removed: false
+                        closed: issue.closed,
+                        removed: false,
+                        repo: issue.repo,
+                        owner: issue.repo
                     });
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);

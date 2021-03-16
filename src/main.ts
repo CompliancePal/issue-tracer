@@ -42,10 +42,12 @@ async function run(): Promise<void> {
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
         relatedIssue.addSubtask({
-          id: `#${issue.number}`,
+          id: issue.number.toString(),
           title: issue.title,
-          closed: issue.isClosed,
-          removed: false
+          closed: issue.closed,
+          removed: false,
+          repo: issue.repo,
+          owner: issue.repo
         })
 
         // TODO: update the related issues section with this issue
