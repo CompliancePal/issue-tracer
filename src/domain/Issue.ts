@@ -33,7 +33,7 @@ const subtaskToString = (
   isCrossReference: boolean
 ): string => {
   const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : ''
-  return `(${reference}#${subtask.id})`
+  return `${reference}#${subtask.id}`
 }
 
 export class Issue extends Entity<GitHubIssue> {

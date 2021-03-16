@@ -46,8 +46,8 @@ async function run(): Promise<void> {
           title: issue.title,
           closed: issue.closed,
           removed: false,
-          repo: issue.repo,
-          owner: issue.repo
+          owner: issue.owner,
+          repo: issue.repo
         })
 
         // TODO: update the related issues section with this issue

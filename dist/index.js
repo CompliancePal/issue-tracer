@@ -41,7 +41,7 @@ const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
 const subtaskToString = (subtask, isCrossReference) => {
     const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
-    return `(${reference}#${subtask.id})`;
+    return `${reference}#${subtask.id}`;
 };
 class Issue extends Entity_1.Entity {
     constructor(issue, owner, repo) {
@@ -282,8 +282,8 @@ function run() {
                         title: issue.title,
                         closed: issue.closed,
                         removed: false,
-                        repo: issue.repo,
-                        owner: issue.repo
+                        owner: issue.owner,
+                        repo: issue.repo
                     });
                     // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
