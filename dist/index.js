@@ -107,7 +107,9 @@ class Issue extends Entity_1.Entity {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
     addSubtask(subtask) {
-        this.subtasks.set(subtask.id, subtask);
+        // FIXME: add cross reference
+        const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`;
+        this.subtasks.set(id, subtask);
         this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(this.subtasks.values())
             .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
             .join('\n')}`;

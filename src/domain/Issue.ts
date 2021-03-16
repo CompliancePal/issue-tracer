@@ -131,7 +131,10 @@ export class Issue extends Entity<GitHubIssue> {
   }
 
   addSubtask(subtask: Subtask): void {
-    this.subtasks.set(subtask.id, subtask)
+    // FIXME: add cross reference
+    const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`
+
+    this.subtasks.set(id, subtask)
 
     this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
       this.subtasks.values()
