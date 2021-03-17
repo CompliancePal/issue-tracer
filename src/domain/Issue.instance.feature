@@ -1,6 +1,6 @@
-Feature: Issue entity
+Feature: Issue instance
 
-        Scenario: Detects subtasks in the placeholder
+        Scenario: Instance detects subtasks in the placeholder
             Given Issue body
             """
             ## Traceability <!-- traceability -->
@@ -15,7 +15,7 @@ Feature: Issue entity
              When Event triggered
              Then Issue detects the subtasks
 
-        Scenario: Detects partOf with local reference
+        Scenario: Instance detects partOf with local reference
             Given Issue body
             """
             # Title
@@ -29,7 +29,7 @@ Feature: Issue entity
              When event triggered
              Then issue identifies the reference
 
-        Scenario: Detects partOf with remote reference
+        Scenario: Instance detects partOf with remote reference
             Given Issue body
             """
             # Title
@@ -42,3 +42,4 @@ Feature: Issue entity
             """
              When event triggered
              Then issue identifies the reference
+
