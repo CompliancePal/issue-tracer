@@ -36,8 +36,8 @@ const remark_stringify_1 = __importDefault(__webpack_require__(7114));
 const remark_gfm_1 = __importDefault(__webpack_require__(5772));
 const yaml_1 = __importDefault(__webpack_require__(3552));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
-const structured_field_values_1 = __webpack_require__(2363);
 const Entity_1 = __webpack_require__(6217);
+const Section_1 = __webpack_require__(6522);
 const subtaskToString = (subtask, isCrossReference) => {
     const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
     return `${reference}#${subtask.id}`;
@@ -150,68 +150,56 @@ class Issue extends Entity_1.Entity {
     }
     detectsSubIssues() {
         const subtasks = new Map();
-        // const isMyHeading = (
-        //   heading: Parent,
-        //   level: number,
-        //   value: string
-        // ): boolean => {
-        //   return heading.depth === level && heading.children[0].value === value
-        // }
         unified_1.default()
             .use(remark_parse_1.default)
             .use(remark_gfm_1.default)
             .use(remark_stringify_1.default)
             .use(() => {
             return tree => {
-                // let h1 = 0
-                // let h2 = 0
-                // visit(tree, 'heading', heading => {
-                //   if (isMyHeading(heading as Parent, 2, 'Traceability')) {
-                //     h1++
-                //   }
-                //   if (
-                //     h1 === 1 &&
-                //     isMyHeading(heading as Parent, 3, 'Related issues')
-                //   ) {
-                //     h2++
-                //   }
-                // })
-                // console.log(h1, h2)
-                unist_util_visit_1.default(tree, 'heading', (heading) => {
-                    if (heading.children.length === 2) {
-                        if (heading.children[1].type === 'html') {
-                            const value = heading.children[1].value;
-                            const m = value.match(/^<!-- (?<meta>.*) -->$/);
-                            if (m !== null) {
-                                const raw = structured_field_values_1.decodeDict(m.groups.meta);
-                                raw;
+                const section = new Section_1.Section('traceability');
+                unist_util_visit_1.default(tree, ['heading', 'list'], (node, position) => {
+                    switch (node.type) {
+                        case 'heading':
+                            // no information
+                            if (section.isStartMarker(node)) {
+                                section.enter(position, node.depth);
                             }
-                        }
-                    }
-                });
-                unist_util_visit_1.default(tree, 'list', list => {
-                    unist_util_visit_1.default(list, 'listItem', item => {
-                        unist_util_visit_1.default(item, 'paragraph', p => {
-                            unist_util_visit_1.default(p, 'text', text => {
-                                const raw = text.value
-                                    .split('(')[1]
-                                    .replace(')', '');
-                                const title = text.value.split(' (')[0];
-                                const parsed = Issue.parsePartOf(raw, this.owner, this.repo);
-                                if (parsed) {
-                                    const { issue_number, owner, repo } = parsed;
-                                    subtasks.set(raw, {
-                                        id: issue_number.toString(),
-                                        title,
-                                        removed: false,
-                                        closed: !!item.checked,
-                                        owner,
-                                        repo
-                                    });
+                            else {
+                                // inside section
+                                if (section.isInside()) {
+                                    // end
+                                    if (section.isEndMarker(node.depth)) {
+                                        section.leave(position);
+                                    }
                                 }
-                            });
-                        });
-                    });
+                            }
+                            break;
+                        case 'list':
+                            if (section.isInside()) {
+                                unist_util_visit_1.default(node, 'listItem', item => {
+                                    unist_util_visit_1.default(item, 'paragraph', p => {
+                                        unist_util_visit_1.default(p, 'text', text => {
+                                            const raw = text.value
+                                                .split('(')[1]
+                                                .replace(')', '');
+                                            const title = text.value.split(' (')[0];
+                                            const parsed = Issue.parsePartOf(raw, this.owner, this.repo);
+                                            if (parsed) {
+                                                const { issue_number, owner, repo } = parsed;
+                                                subtasks.set(raw, {
+                                                    id: issue_number.toString(),
+                                                    title,
+                                                    removed: false,
+                                                    closed: !!item.checked,
+                                                    owner,
+                                                    repo
+                                                });
+                                            }
+                                        });
+                                    });
+                                });
+                            }
+                    }
                 });
             };
         })
@@ -220,6 +208,60 @@ class Issue extends Entity_1.Entity {
     }
 }
 exports.Issue = Issue;
+
+
+/***/ }),
+
+/***/ 6522:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Section = void 0;
+const structured_field_values_1 = __webpack_require__(2363);
+class Section {
+    constructor(flag) {
+        this.props = {
+            flag
+        };
+    }
+    enter(start, depth) {
+        this.props.start = start;
+        this.props.depth = depth;
+    }
+    leave(end) {
+        this.props.end = end;
+    }
+    isEndMarker(depth) {
+        if (this.props.depth === undefined)
+            return false;
+        return depth <= this.props.depth;
+    }
+    isInside() {
+        return this.props.start !== undefined && this.props.end === undefined;
+    }
+    isStartMarker(node) {
+        if (node.type === 'heading') {
+            if (node.children.length === 2) {
+                if (node.children[1].type === 'html') {
+                    const value = node.children[1].value;
+                    const m = value.match(/^<!-- (?<meta>.*) -->$/);
+                    if (m !== null && m.groups) {
+                        const { [this.props.flag]: { value: traceability } = {
+                            value: false
+                        } } = structured_field_values_1.decodeDict(m.groups.meta);
+                        if (traceability) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+exports.Section = Section;
 
 
 /***/ }),

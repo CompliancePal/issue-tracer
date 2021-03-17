@@ -4,10 +4,15 @@ import openEventPayload from '../payloads/opened.json'
 import {IPartOf, Issue} from './Issue'
 
 const instance = loadFeature('./src/domain/Issue.instance.feature', {
-  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) =>
-    `${scenarioTitle} (${scenarioTags
+  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
+    const issues = scenarioTags
       .filter(tag => tag.startsWith('@issue'))
-      .join('')})`
+      .map(tag => tag.replace('@issue-', '#'))
+
+    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
+
+    return `${scenarioTitle}${brackets}`
+  }
 })
 
 defineFeature(instance, test => {
@@ -19,7 +24,7 @@ defineFeature(instance, test => {
     when,
     then
   }) => {
-    given('Issue body', docString => {
+    given('event body', docString => {
       event = {
         ...openEventPayload
       } as IssuesOpenedEvent
@@ -27,11 +32,11 @@ defineFeature(instance, test => {
       event.issue.body = docString
     })
 
-    when('Event triggered', () => {
+    when('event is triggered', () => {
       issue = Issue.fromEventPayload(event)
     })
 
-    then('Issue detects the subtasks', () => {
+    then('instance detects the subtasks', () => {
       expect(issue.subtasks).toEqual(
         new Map([
           [
@@ -58,6 +63,48 @@ defineFeature(instance, test => {
           ]
         ])
       )
+    })
+  })
+
+  test('Instance ignores subtasks outside the placeholder', ({
+    given,
+    when,
+    then
+  }) => {
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    when('event is triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('instance detects the subtasks', () => {
+      expect(issue.subtasks.size).toEqual(0)
+    })
+  })
+
+  test('Instance ignores subtasks in body without placeholder', ({
+    given,
+    when,
+    then
+  }) => {
+    given('Issue body without placeholder', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    when('Event triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('Issue ignores', () => {
+      expect(issue.subtasks.size).toEqual(0)
     })
   })
 
@@ -121,7 +168,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf
+    let result: IPartOf | undefined
 
     given('reference', (docString: string) => {
       reference = docString
@@ -136,7 +183,7 @@ defineFeature(classMethods, test => {
     })
 
     when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)!
+      result = Issue.parsePartOf(reference, owner, repo)
     })
 
     then('match', docString => {
@@ -148,7 +195,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf
+    let result: IPartOf | undefined
 
     given('reference', (docString: string) => {
       reference = docString
@@ -163,7 +210,7 @@ defineFeature(classMethods, test => {
     })
 
     when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)!
+      result = Issue.parsePartOf(reference, owner, repo)
     })
 
     then('match', docString => {
@@ -175,7 +222,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf
+    let result: IPartOf | undefined
 
     given('reference', (docString: string) => {
       reference = docString
@@ -190,7 +237,7 @@ defineFeature(classMethods, test => {
     })
 
     when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)!
+      result = Issue.parsePartOf(reference, owner, repo)
     })
 
     then('match', () => {

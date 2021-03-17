@@ -11,8 +11,8 @@ import YAML from 'yaml'
 import visit from 'unist-util-visit'
 // import filter from 'unist-util-filter'
 import {Parent} from 'unist'
-import {decodeDict} from '../utils/structured-field-values'
 import {Entity} from './Entity'
+import {Section} from './Section'
 
 export interface IPartOf {
   owner: string
@@ -198,80 +198,64 @@ export class Issue extends Entity<GitHubIssue> {
   protected detectsSubIssues(): Map<string, Subtask> {
     const subtasks = new Map<string, Subtask>()
 
-    // const isMyHeading = (
-    //   heading: Parent,
-    //   level: number,
-    //   value: string
-    // ): boolean => {
-    //   return heading.depth === level && heading.children[0].value === value
-    // }
-
     unified()
       .use(markdown)
       .use(gfm)
       .use(stringify)
       .use(() => {
         return tree => {
-          // let h1 = 0
-          // let h2 = 0
+          const section = new Section('traceability')
 
-          // visit(tree, 'heading', heading => {
-          //   if (isMyHeading(heading as Parent, 2, 'Traceability')) {
-          //     h1++
-          //   }
-
-          //   if (
-          //     h1 === 1 &&
-          //     isMyHeading(heading as Parent, 3, 'Related issues')
-          //   ) {
-          //     h2++
-          //   }
-          // })
-
-          // console.log(h1, h2)
-
-          visit(tree, 'heading', (heading: Parent) => {
-            if (heading.children.length === 2) {
-              if (heading.children[1].type === 'html') {
-                const value = heading.children[1].value as string
-
-                const m = value.match(/^<!-- (?<meta>.*) -->$/)
-
-                if (m !== null) {
-                  const raw = decodeDict(m.groups!.meta)
-                  raw
-                }
-              }
-            }
-          })
-
-          visit(tree, 'list', list => {
-            visit(list, 'listItem', item => {
-              visit(item, 'paragraph', p => {
-                visit(p, 'text', text => {
-                  const raw = (text.value as string)
-                    .split('(')[1]
-                    .replace(')', '')
-
-                  const title = (text.value as string).split(' (')[0]
-
-                  const parsed = Issue.parsePartOf(raw, this.owner, this.repo)
-
-                  if (parsed) {
-                    const {issue_number, owner, repo} = parsed
-
-                    subtasks.set(raw, {
-                      id: issue_number.toString(),
-                      title,
-                      removed: false,
-                      closed: !!item.checked,
-                      owner,
-                      repo
-                    })
+          visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
+            switch (node.type) {
+              case 'heading':
+                // no information
+                if (section.isStartMarker(node)) {
+                  section.enter(position, node.depth as number)
+                } else {
+                  // inside section
+                  if (section.isInside()) {
+                    // end
+                    if (section.isEndMarker(node.depth as number)) {
+                      section.leave(position)
+                    }
                   }
-                })
-              })
-            })
+                }
+                break
+              case 'list':
+                if (section.isInside()) {
+                  visit(node, 'listItem', item => {
+                    visit(item, 'paragraph', p => {
+                      visit(p, 'text', text => {
+                        const raw = (text.value as string)
+                          .split('(')[1]
+                          .replace(')', '')
+
+                        const title = (text.value as string).split(' (')[0]
+
+                        const parsed = Issue.parsePartOf(
+                          raw,
+                          this.owner,
+                          this.repo
+                        )
+
+                        if (parsed) {
+                          const {issue_number, owner, repo} = parsed
+
+                          subtasks.set(raw, {
+                            id: issue_number.toString(),
+                            title,
+                            removed: false,
+                            closed: !!item.checked,
+                            owner,
+                            repo
+                          })
+                        }
+                      })
+                    })
+                  })
+                }
+            }
           })
         }
       })
