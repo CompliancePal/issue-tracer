@@ -1,6 +1,6 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
-import openEventPayload from '../payloads/opened.json'
+import openEventPayload from '../payloads/event-opened.json'
 import {IPartOf, Issue} from './Issue'
 
 const instance = loadFeature('./src/domain/Issue.instance.feature', {
@@ -19,11 +19,7 @@ defineFeature(instance, test => {
   let event: IssuesOpenedEvent
   let issue: Issue
 
-  test('Instance detects subtasks in the placeholder', ({
-    given,
-    when,
-    then
-  }) => {
+  test('Subtasks in the placeholder', ({given, when, then}) => {
     given('event body', docString => {
       event = {
         ...openEventPayload
@@ -66,11 +62,7 @@ defineFeature(instance, test => {
     })
   })
 
-  test('Instance ignores subtasks outside the placeholder', ({
-    given,
-    when,
-    then
-  }) => {
+  test('Subtasks outside the placeholder', ({given, when, then}) => {
     given('event body', docString => {
       event = {
         ...openEventPayload
@@ -87,11 +79,7 @@ defineFeature(instance, test => {
     })
   })
 
-  test('Instance ignores subtasks in body without placeholder', ({
-    given,
-    when,
-    then
-  }) => {
+  test('Subtasks in body without placeholder', ({given, when, then}) => {
     given('Issue body without placeholder', docString => {
       event = {
         ...openEventPayload
@@ -108,11 +96,7 @@ defineFeature(instance, test => {
     })
   })
 
-  test('Instance detects partOf with local reference', ({
-    given,
-    when,
-    then
-  }) => {
+  test('partOf with local reference', ({given, when, then}) => {
     given('Issue body', docString => {
       event = {...openEventPayload} as IssuesOpenedEvent
       event.issue.body = docString
@@ -132,11 +116,7 @@ defineFeature(instance, test => {
     })
   })
 
-  test('Instance detects partOf with remote reference', ({
-    given,
-    when,
-    then
-  }) => {
+  test('partOf with remote reference', ({given, when, then}) => {
     given('Issue body', docString => {
       event = {...openEventPayload} as IssuesOpenedEvent
       event.issue.body = docString

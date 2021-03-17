@@ -1,13 +1,13 @@
 Feature: Issue instance
 
         @issue-7
-        Scenario: Instance detects subtasks in the placeholder
+        Scenario: Subtasks in the placeholder
             Given event body
             """
             ## Traceability <!-- traceability -->
+            <!-- Section created by CompliancePal. Do not edit -->
 
             ### Related issues
-            <!-- Section created by CompliancePal. Do not edit -->
 
             - [x] Closed title (#1)
             - [ ] Open title (#2)
@@ -16,10 +16,11 @@ Feature: Issue instance
              Then instance detects the subtasks
 
         @issue-7
-        Scenario: Instance ignores subtasks outside the placeholder
+        Scenario: Subtasks outside the placeholder
             Given event body
             """
             ## Traceability <!-- traceability -->
+            <!-- Section created by CompliancePal. Do not edit -->
 
             ## Related issues
 
@@ -30,13 +31,12 @@ Feature: Issue instance
              Then instance detects the subtasks
 
         @issue-7
-        Scenario: Instance ignores subtasks in body without placeholder
+        Scenario: Subtasks in body without placeholder
             Given Issue body without placeholder
             """
             ## Traceability
 
             ### Related issues
-            <!-- Section created by CompliancePal. Do not edit -->
 
             - [x] Closed title (#1)
             - [ ] Open title (#2)
@@ -44,7 +44,7 @@ Feature: Issue instance
              When Event triggered
              Then Issue ignores
 
-        Scenario: Instance detects partOf with local reference
+        Scenario: partOf with local reference
             Given Issue body
             """
             # Title
@@ -58,7 +58,7 @@ Feature: Issue instance
              When event triggered
              Then issue identifies the reference
 
-        Scenario: Instance detects partOf with remote reference
+        Scenario: partOf with remote reference
             Given Issue body
             """
             # Title
