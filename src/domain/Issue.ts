@@ -10,7 +10,9 @@ import gfm from 'remark-gfm'
 import YAML from 'yaml'
 import visit from 'unist-util-visit'
 // import filter from 'unist-util-filter'
-// import {Parent} from 'unist'
+import {Parent} from 'unist'
+//@ts-ignore
+import {decodeDict} from '../utils/structured-field-values'
 import {Entity} from './Entity'
 
 export interface IPartOf {
@@ -136,7 +138,7 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
+    this.body = `## Traceability <!-- traceability -->\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
       this.subtasks.values()
     )
       .map(
@@ -228,6 +230,20 @@ export class Issue extends Entity<GitHubIssue> {
           // })
 
           // console.log(h1, h2)
+
+          visit(tree, 'heading', (heading: Parent) => {
+            if (heading.children.length === 2) {
+              if (heading.children[1].type === 'html') {
+                const value = heading.children[1].value as string
+
+                const m = value.match(/^<!-- (?<meta>.*) -->$/)
+
+                if (m) {
+                  const raw = decodeDict(m.groups!.meta)
+                }
+              }
+            }
+          })
 
           visit(tree, 'list', list => {
             visit(list, 'listItem', item => {
