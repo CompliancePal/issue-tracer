@@ -11,7 +11,6 @@ import YAML from 'yaml'
 import visit from 'unist-util-visit'
 // import filter from 'unist-util-filter'
 import {Parent} from 'unist'
-//@ts-ignore
 import {decodeDict} from '../utils/structured-field-values'
 import {Entity} from './Entity'
 
@@ -238,8 +237,9 @@ export class Issue extends Entity<GitHubIssue> {
 
                 const m = value.match(/^<!-- (?<meta>.*) -->$/)
 
-                if (m) {
+                if (m !== null) {
                   const raw = decodeDict(m.groups!.meta)
+                  raw
                 }
               }
             }
