@@ -1,7 +1,7 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
-import {IPartOf, Issue} from './Issue'
+import {IPartOf, Issue, Subtask} from './Issue'
 
 const instance = loadFeature('./src/domain/Issue.instance.feature', {
   scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
@@ -93,6 +93,35 @@ defineFeature(instance, test => {
 
     then('Issue ignores', () => {
       expect(issue.subtasks.size).toEqual(0)
+    })
+  })
+
+  test('Changes preserves content outside placeholder', ({
+    given,
+    and,
+    when,
+    then
+  }) => {
+    let subtask: Subtask
+
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    and('new subtask', docString => {
+      subtask = JSON.parse(docString) as Subtask
+    })
+
+    when('subtask added', () => {
+      issue = Issue.fromEventPayload(event)
+      issue.addSubtask(subtask)
+    })
+
+    then('content outside placeholder is not affected', docString => {
+      expect(issue.body).toEqual(docString)
     })
   })
 

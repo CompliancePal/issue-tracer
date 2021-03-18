@@ -15,6 +15,14 @@ export class Section {
     }
   }
 
+  get start(): number | undefined {
+    return this.props.start
+  }
+
+  get end(): number | undefined {
+    return this.props.end
+  }
+
   enter(start: number, depth: number): void {
     this.props.start = start
     this.props.depth = depth

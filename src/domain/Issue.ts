@@ -13,6 +13,7 @@ import visit from 'unist-util-visit'
 import {Parent} from 'unist'
 import {Entity} from './Entity'
 import {Section} from './Section'
+import {styleMarkdownOutput} from '../plugins/unified'
 
 export interface IPartOf {
   owner: string
@@ -20,7 +21,7 @@ export interface IPartOf {
   issue_number: number
 }
 
-interface Subtask {
+export interface Subtask {
   id: string
   title: string
   closed: boolean
@@ -137,16 +138,75 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    this.body = `## Traceability <!-- traceability -->\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
-      this.subtasks.values()
-    )
-      .map(
-        _subtask =>
-          `- [${_subtask.closed ? 'x' : ' '}] ${
-            _subtask.title
-          } (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`
-      )
-      .join('\n')}`
+    //TODO: remove the section form the existing body
+
+    // const tree = processor.parse(this.body) as Parent
+
+    const stringifier = unified()
+      .use(markdown)
+      .use(gfm)
+      .use(styleMarkdownOutput, {
+        comment: '<!-- Section created by CompliancePal. Do not edit -->'
+      })
+      .use(() => {
+        return tree => {
+          const section = new Section('traceability')
+
+          const sectionContent = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n\n### Related issues\n\n${Array.from(
+            this.subtasks.values()
+          )
+            .map(
+              _subtask =>
+                `* [${_subtask.closed ? 'x' : ' '}] ${
+                  _subtask.title
+                } (${subtaskToString(
+                  _subtask,
+                  this.isCrossReference(_subtask)
+                )})`
+            )
+            .join('\n')}\n`
+
+          const processor = unified().use(markdown).use(gfm)
+
+          visit(tree, 'heading', (node: Parent, position: number) => {
+            if (section.isStartMarker(node)) {
+              section.enter(position, node.depth as number)
+            } else {
+              // inside section
+              if (section.isInside()) {
+                // end
+                if (section.isEndMarker(node.depth as number)) {
+                  section.leave(position)
+                }
+              }
+            }
+          })
+
+          const before = (tree as Parent).children.filter(
+            (node, index) => index < (section.start || 0)
+          )
+
+          const after = (tree as Parent).children.filter(
+            (node, index) =>
+              index >= (section.end || (tree as Parent).children.length)
+          )
+
+          const sectionTree = processor.parse(sectionContent) as Parent
+
+          const result = processor.parse('') as Parent
+
+          result.children = before.concat(sectionTree.children).concat(after)
+
+          return result
+        }
+      })
+      .use(stringify)
+
+    const sectionBody = stringifier.processSync(this.body)
+
+    // console.log(stringifier.data().toMarkdownExtensions)
+
+    this.body = sectionBody.contents as string
   }
 
   protected detectsPartOf(): IPartOf | undefined {

@@ -38,6 +38,7 @@ const yaml_1 = __importDefault(__webpack_require__(3552));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
 const Section_1 = __webpack_require__(6522);
+const unified_2 = __webpack_require__(4079);
 const subtaskToString = (subtask, isCrossReference) => {
     const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
     return `${reference}#${subtask.id}`;
@@ -109,9 +110,47 @@ class Issue extends Entity_1.Entity {
         // FIXME: add cross reference
         const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
-        this.body = `## Traceability <!-- traceability -->\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(this.subtasks.values())
-            .map(_subtask => `- [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
-            .join('\n')}`;
+        //TODO: remove the section form the existing body
+        // const tree = processor.parse(this.body) as Parent
+        const stringifier = unified_1.default()
+            .use(remark_parse_1.default)
+            .use(remark_gfm_1.default)
+            .use(unified_2.styleMarkdownOutput, {
+            comment: '<!-- Section created by CompliancePal. Do not edit -->'
+        })
+            .use(() => {
+            return tree => {
+                const section = new Section_1.Section('traceability');
+                const sectionContent = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n\n### Related issues\n\n${Array.from(this.subtasks.values())
+                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
+                    .join('\n')}\n`;
+                const processor = unified_1.default().use(remark_parse_1.default).use(remark_gfm_1.default);
+                unist_util_visit_1.default(tree, 'heading', (node, position) => {
+                    if (section.isStartMarker(node)) {
+                        section.enter(position, node.depth);
+                    }
+                    else {
+                        // inside section
+                        if (section.isInside()) {
+                            // end
+                            if (section.isEndMarker(node.depth)) {
+                                section.leave(position);
+                            }
+                        }
+                    }
+                });
+                const before = tree.children.filter((node, index) => index < (section.start || 0));
+                const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
+                const sectionTree = processor.parse(sectionContent);
+                const result = processor.parse('');
+                result.children = before.concat(sectionTree.children).concat(after);
+                return result;
+            };
+        })
+            .use(remark_stringify_1.default);
+        const sectionBody = stringifier.processSync(this.body);
+        // console.log(stringifier.data().toMarkdownExtensions)
+        this.body = sectionBody.contents;
     }
     detectsPartOf() {
         let partOf;
@@ -225,6 +264,12 @@ class Section {
         this.props = {
             flag
         };
+    }
+    get start() {
+        return this.props.start;
+    }
+    get end() {
+        return this.props.end;
     }
     enter(start, depth) {
         this.props.start = start;
@@ -354,6 +399,37 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 4079:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.styleMarkdownOutput = void 0;
+function styleMarkdownOutput(options) {
+    //@ts-ignore
+    const data = this.data();
+    data.toMarkdownExtensions.push({
+        bullet: '-',
+        listItemIndent: 'one',
+        join: [
+            //@ts-ignore
+            (first, second) => {
+                if (first.type === 'heading' &&
+                    second.type === 'html' &&
+                    second.value === options.comment) {
+                    return 0;
+                }
+                return true;
+            }
+        ]
+    });
+}
+exports.styleMarkdownOutput = styleMarkdownOutput;
 
 
 /***/ }),
