@@ -369,7 +369,6 @@ function run() {
                         core.info('Issue is not partOf other issues');
                         return;
                     }
-                    // TODO: get the related issue using the repo
                     repo = new Issues_1.IssuesRepo(ghToken);
                     relatedIssue = yield repo.get(issue.partOf);
                     if (relatedIssue === undefined) {
@@ -377,6 +376,7 @@ function run() {
                         return;
                     }
                     core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
+                    core.info(`Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`);
                     relatedIssue.addSubtask({
                         id: issue.number.toString(),
                         title: issue.title,
@@ -385,7 +385,6 @@ function run() {
                         owner: issue.owner,
                         repo: issue.repo
                     });
-                    // TODO: update the related issues section with this issue
                     yield repo.save(relatedIssue);
                     core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);
                     core.setOutput('partOf', issue.partOf);

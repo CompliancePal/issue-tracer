@@ -30,7 +30,6 @@ async function run(): Promise<void> {
           return
         }
 
-        // TODO: get the related issue using the repo
         repo = new IssuesRepo(ghToken)
 
         relatedIssue = await repo.get(issue.partOf)
@@ -41,6 +40,10 @@ async function run(): Promise<void> {
         }
         core.info(`Related issue ${relatedIssue.number} found sucessfuly`)
 
+        core.info(
+          `Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`
+        )
+
         relatedIssue.addSubtask({
           id: issue.number.toString(),
           title: issue.title,
@@ -50,7 +53,6 @@ async function run(): Promise<void> {
           repo: issue.repo
         })
 
-        // TODO: update the related issues section with this issue
         await repo.save(relatedIssue)
         core.info(`Related issue ${relatedIssue.number} updated sucessfuly`)
 
