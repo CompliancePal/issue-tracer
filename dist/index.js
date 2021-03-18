@@ -110,8 +110,6 @@ class Issue extends Entity_1.Entity {
         // FIXME: add cross reference
         const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
-        //TODO: remove the section form the existing body
-        // const tree = processor.parse(this.body) as Parent
         const stringifier = unified_1.default()
             .use(remark_parse_1.default)
             .use(remark_gfm_1.default)
@@ -152,7 +150,7 @@ class Issue extends Entity_1.Entity {
             .use(remark_stringify_1.default);
         const sectionBody = stringifier.processSync(this.body);
         // console.log(stringifier.data().toMarkdownExtensions)
-        this.body = sectionBody.contents;
+        this.body = sectionBody.contents.trim();
     }
     detectsPartOf() {
         let partOf;

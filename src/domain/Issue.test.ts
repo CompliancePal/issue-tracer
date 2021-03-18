@@ -192,13 +192,15 @@ defineFeature(instance, test => {
 })
 
 const classMethods = loadFeature('./features/Issue.class.feature', {
-  // scenarioNameTemplate: ({scenarioTitle, scenarioTags}) =>
-  //   `${scenarioTitle} (${scenarioTags
-  //     .filter(tag => {
-  //       console.log(tag)
-  //       return tag.startsWith('@issue')
-  //     })
-  //     .join('')})`
+  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
+    const issues = scenarioTags
+      .filter(tag => tag.startsWith('@issue'))
+      .map(tag => tag.replace('@issue-', '#'))
+
+    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
+
+    return `${scenarioTitle}${brackets}`
+  }
 })
 
 defineFeature(classMethods, test => {
