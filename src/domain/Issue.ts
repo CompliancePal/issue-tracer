@@ -182,6 +182,8 @@ export class Issue extends Entity<GitHubIssue> {
             }
           })
 
+          if (!section.found) return tree
+
           const before = (tree as Parent).children.filter(
             (node, index) => index < (section.start || 0)
           )

@@ -23,6 +23,10 @@ export class Section {
     return this.props.end
   }
 
+  get found(): boolean {
+    return this.props.start !== undefined && this.props.end !== undefined
+  }
+
   enter(start: number, depth: number): void {
     this.props.start = start
     this.props.depth = depth

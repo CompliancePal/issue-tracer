@@ -139,6 +139,8 @@ class Issue extends Entity_1.Entity {
                         }
                     }
                 });
+                if (!section.found)
+                    return tree;
                 const before = tree.children.filter((node, index) => index < (section.start || 0));
                 const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
                 const sectionTree = processor.parse(sectionContent);
@@ -270,6 +272,9 @@ class Section {
     }
     get end() {
         return this.props.end;
+    }
+    get found() {
+        return this.props.start !== undefined && this.props.end !== undefined;
     }
     enter(start, depth) {
         this.props.start = start;
