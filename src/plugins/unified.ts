@@ -5,6 +5,10 @@ interface Options {
   comment: string
 }
 
+/**
+ * Further customisation options on plugin homepage
+ * https://github.com/syntax-tree/mdast-util-to-markdown
+ */
 export function styleMarkdownOutput(options: Options): void {
   //@ts-ignore
   const data = this.data() as {
