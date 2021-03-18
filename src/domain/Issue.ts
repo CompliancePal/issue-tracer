@@ -10,8 +10,10 @@ import gfm from 'remark-gfm'
 import YAML from 'yaml'
 import visit from 'unist-util-visit'
 // import filter from 'unist-util-filter'
-// import {Parent} from 'unist'
+import {Parent} from 'unist'
 import {Entity} from './Entity'
+import {Section} from './Section'
+import {styleMarkdownOutput} from '../plugins/unified'
 
 export interface IPartOf {
   owner: string
@@ -19,7 +21,7 @@ export interface IPartOf {
   issue_number: number
 }
 
-interface Subtask {
+export interface Subtask {
   id: string
   title: string
   closed: boolean
@@ -136,16 +138,75 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    this.body = `## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n${Array.from(
-      this.subtasks.values()
-    )
-      .map(
-        _subtask =>
-          `- [${_subtask.closed ? 'x' : ' '}] ${
-            _subtask.title
-          } (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`
-      )
-      .join('\n')}`
+    //TODO: remove the section form the existing body
+
+    // const tree = processor.parse(this.body) as Parent
+
+    const stringifier = unified()
+      .use(markdown)
+      .use(gfm)
+      .use(styleMarkdownOutput, {
+        comment: '<!-- Section created by CompliancePal. Do not edit -->'
+      })
+      .use(() => {
+        return tree => {
+          const section = new Section('traceability')
+
+          const sectionContent = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n\n### Related issues\n\n${Array.from(
+            this.subtasks.values()
+          )
+            .map(
+              _subtask =>
+                `* [${_subtask.closed ? 'x' : ' '}] ${
+                  _subtask.title
+                } (${subtaskToString(
+                  _subtask,
+                  this.isCrossReference(_subtask)
+                )})`
+            )
+            .join('\n')}\n`
+
+          const processor = unified().use(markdown).use(gfm)
+
+          visit(tree, 'heading', (node: Parent, position: number) => {
+            if (section.isStartMarker(node)) {
+              section.enter(position, node.depth as number)
+            } else {
+              // inside section
+              if (section.isInside()) {
+                // end
+                if (section.isEndMarker(node.depth as number)) {
+                  section.leave(position)
+                }
+              }
+            }
+          })
+
+          const before = (tree as Parent).children.filter(
+            (node, index) => index < (section.start || 0)
+          )
+
+          const after = (tree as Parent).children.filter(
+            (node, index) =>
+              index >= (section.end || (tree as Parent).children.length)
+          )
+
+          const sectionTree = processor.parse(sectionContent) as Parent
+
+          const result = processor.parse('') as Parent
+
+          result.children = before.concat(sectionTree.children).concat(after)
+
+          return result
+        }
+      })
+      .use(stringify)
+
+    const sectionBody = stringifier.processSync(this.body)
+
+    // console.log(stringifier.data().toMarkdownExtensions)
+
+    this.body = sectionBody.contents as string
   }
 
   protected detectsPartOf(): IPartOf | undefined {
@@ -197,65 +258,64 @@ export class Issue extends Entity<GitHubIssue> {
   protected detectsSubIssues(): Map<string, Subtask> {
     const subtasks = new Map<string, Subtask>()
 
-    // const isMyHeading = (
-    //   heading: Parent,
-    //   level: number,
-    //   value: string
-    // ): boolean => {
-    //   return heading.depth === level && heading.children[0].value === value
-    // }
-
     unified()
       .use(markdown)
       .use(gfm)
       .use(stringify)
       .use(() => {
         return tree => {
-          // let h1 = 0
-          // let h2 = 0
+          const section = new Section('traceability')
 
-          // visit(tree, 'heading', heading => {
-          //   if (isMyHeading(heading as Parent, 2, 'Traceability')) {
-          //     h1++
-          //   }
-
-          //   if (
-          //     h1 === 1 &&
-          //     isMyHeading(heading as Parent, 3, 'Related issues')
-          //   ) {
-          //     h2++
-          //   }
-          // })
-
-          // console.log(h1, h2)
-
-          visit(tree, 'list', list => {
-            visit(list, 'listItem', item => {
-              visit(item, 'paragraph', p => {
-                visit(p, 'text', text => {
-                  const raw = (text.value as string)
-                    .split('(')[1]
-                    .replace(')', '')
-
-                  const title = (text.value as string).split(' (')[0]
-
-                  const parsed = Issue.parsePartOf(raw, this.owner, this.repo)
-
-                  if (parsed) {
-                    const {issue_number, owner, repo} = parsed
-
-                    subtasks.set(raw, {
-                      id: issue_number.toString(),
-                      title,
-                      removed: false,
-                      closed: !!item.checked,
-                      owner,
-                      repo
-                    })
+          visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
+            switch (node.type) {
+              case 'heading':
+                // no information
+                if (section.isStartMarker(node)) {
+                  section.enter(position, node.depth as number)
+                } else {
+                  // inside section
+                  if (section.isInside()) {
+                    // end
+                    if (section.isEndMarker(node.depth as number)) {
+                      section.leave(position)
+                    }
                   }
-                })
-              })
-            })
+                }
+                break
+              case 'list':
+                if (section.isInside()) {
+                  visit(node, 'listItem', item => {
+                    visit(item, 'paragraph', p => {
+                      visit(p, 'text', text => {
+                        const raw = (text.value as string)
+                          .split('(')[1]
+                          .replace(')', '')
+
+                        const title = (text.value as string).split(' (')[0]
+
+                        const parsed = Issue.parsePartOf(
+                          raw,
+                          this.owner,
+                          this.repo
+                        )
+
+                        if (parsed) {
+                          const {issue_number, owner, repo} = parsed
+
+                          subtasks.set(raw, {
+                            id: issue_number.toString(),
+                            title,
+                            removed: false,
+                            closed: !!item.checked,
+                            owner,
+                            repo
+                          })
+                        }
+                      })
+                    })
+                  })
+                }
+            }
           })
         }
       })

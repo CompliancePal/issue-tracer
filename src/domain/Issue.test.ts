@@ -1,46 +1,38 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
-import {IPartOf, Issue} from './Issue'
-import openEventPayload from '../payloads/opened.json'
+import {defineFeature, loadFeature} from 'jest-cucumber'
+import openEventPayload from '../payloads/event-opened.json'
+import {IPartOf, Issue, Subtask} from './Issue'
 
-describe('Issue', () => {
-  describe('instance', () => {
-    it('finds partsOf with local reference', () => {
-      const event = {...openEventPayload} as IssuesOpenedEvent
-      event.issue.body = `# Title\n\n---\nsome: else\npartOf: #123\nkey: value\n---\n`
+const instance = loadFeature('./src/domain/Issue.instance.feature', {
+  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
+    const issues = scenarioTags
+      .filter(tag => tag.startsWith('@issue'))
+      .map(tag => tag.replace('@issue-', '#'))
 
-      const issue = Issue.fromEventPayload(event)
+    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
 
-      expect(issue.partOf).toEqual({
-        owner: 'CompliancePal',
-        repo: 'issue-tracer',
-        issue_number: 123
-      } as IPartOf)
-      expect(issue.hasParent()).toBeTruthy()
-    })
+    return `${scenarioTitle}${brackets}`
+  }
+})
 
-    it('finds partsOf with remote reference', () => {
-      const event = {...openEventPayload} as IssuesOpenedEvent
-      event.issue.body = `# Title\n\n---\nsome: else\npartOf: u/r#123\nkey: value\n---\n`
+defineFeature(instance, test => {
+  let event: IssuesOpenedEvent
+  let issue: Issue
 
-      const issue = Issue.fromEventPayload(event)
-
-      expect(issue.partOf).toBeTruthy()
-      expect(issue.hasParent()).toBeTruthy()
-    })
-
-    it('finds subtasks', () => {
-      const event = {
-        ...openEventPayload,
-        ...{
-          issue: {
-            body:
-              '---\npartOf: #5\n\n---\n## Traceability\n\n### Related issues\n<!-- Section created by CompliancePal. Do not edit -->\n\n- [x] Closed title (#1)\n\n- [ ] Open title (#2)'
-          }
-        }
+  test('Subtasks in the placeholder', ({given, when, then}) => {
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
       } as IssuesOpenedEvent
 
-      const issue = Issue.fromEventPayload(event)
+      event.issue.body = docString
+    })
 
+    when('event is triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('instance detects the subtasks', () => {
       expect(issue.subtasks).toEqual(
         new Map([
           [
@@ -70,25 +62,195 @@ describe('Issue', () => {
     })
   })
 
-  describe('[static] parsePartOf', () => {
-    it('finds local reference', () => {
-      expect(Issue.parsePartOf('#123', 'owner', 'repo')).toEqual({
-        owner: 'owner',
-        repo: 'repo',
-        issue_number: 123
-      } as IPartOf)
+  test('Subtasks outside the placeholder', ({given, when, then}) => {
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
     })
 
-    it('finds remote reference', () => {
-      expect(Issue.parsePartOf('u-x/r#123', 'o', 'r')).toEqual({
-        owner: 'u-x',
-        repo: 'r',
-        issue_number: 123
-      } as IPartOf)
+    when('event is triggered', () => {
+      issue = Issue.fromEventPayload(event)
     })
 
-    it('does not find invalid ', () => {
-      expect(Issue.parsePartOf('abc#123', 'owner', 'repo')).toEqual(undefined)
+    then('instance detects the subtasks', () => {
+      expect(issue.subtasks.size).toEqual(0)
+    })
+  })
+
+  test('Subtasks in body without placeholder', ({given, when, then}) => {
+    given('Issue body without placeholder', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    when('Event triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('Issue ignores', () => {
+      expect(issue.subtasks.size).toEqual(0)
+    })
+  })
+
+  test('Changes preserves content outside placeholder', ({
+    given,
+    and,
+    when,
+    then
+  }) => {
+    let subtask: Subtask
+
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    and('new subtask', docString => {
+      subtask = JSON.parse(docString) as Subtask
+    })
+
+    when('subtask added', () => {
+      issue = Issue.fromEventPayload(event)
+      issue.addSubtask(subtask)
+    })
+
+    then('content outside placeholder is not affected', docString => {
+      expect(issue.body).toEqual(docString)
+    })
+  })
+
+  test('partOf with local reference', ({given, when, then}) => {
+    given('Issue body', docString => {
+      event = {...openEventPayload} as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    when('event triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('issue identifies the reference', () => {
+      expect(issue.partOf).toEqual({
+        owner: 'CompliancePal',
+        repo: 'issue-tracer',
+        issue_number: 123
+      } as IPartOf)
+      expect(issue.hasParent()).toBeTruthy()
+    })
+  })
+
+  test('partOf with remote reference', ({given, when, then}) => {
+    given('Issue body', docString => {
+      event = {...openEventPayload} as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    when('event triggered', () => {
+      issue = Issue.fromEventPayload(event)
+    })
+
+    then('issue identifies the reference', () => {
+      expect(issue.partOf).toBeTruthy()
+      expect(issue.hasParent()).toBeTruthy()
+    })
+  })
+})
+
+const classMethods = loadFeature('./src/domain/Issue.class.feature', {
+  // scenarioNameTemplate: ({scenarioTitle, scenarioTags}) =>
+  //   `${scenarioTitle} (${scenarioTags
+  //     .filter(tag => {
+  //       console.log(tag)
+  //       return tag.startsWith('@issue')
+  //     })
+  //     .join('')})`
+})
+
+defineFeature(classMethods, test => {
+  test('parsePartOf with local reference', ({given, and, when, then}) => {
+    let reference: string
+    let owner: string
+    let repo: string
+    let result: IPartOf | undefined
+
+    given('reference', (docString: string) => {
+      reference = docString
+    })
+
+    and('owner', (docString: string) => {
+      owner = docString
+    })
+
+    and('repo', docString => {
+      repo = docString
+    })
+
+    when('parsing', () => {
+      result = Issue.parsePartOf(reference, owner, repo)
+    })
+
+    then('match', docString => {
+      expect(result).toEqual(JSON.parse(docString))
+    })
+  })
+
+  test('parsePartOf with remote reference', ({given, and, when, then}) => {
+    let reference: string
+    let owner: string
+    let repo: string
+    let result: IPartOf | undefined
+
+    given('reference', (docString: string) => {
+      reference = docString
+    })
+
+    and('owner', (docString: string) => {
+      owner = docString
+    })
+
+    and('repo', docString => {
+      repo = docString
+    })
+
+    when('parsing', () => {
+      result = Issue.parsePartOf(reference, owner, repo)
+    })
+
+    then('match', docString => {
+      expect(result).toEqual(JSON.parse(docString))
+    })
+  })
+
+  test('parsePartOf does not find invalid', ({given, and, when, then}) => {
+    let reference: string
+    let owner: string
+    let repo: string
+    let result: IPartOf | undefined
+
+    given('reference', (docString: string) => {
+      reference = docString
+    })
+
+    and('owner', (docString: string) => {
+      owner = docString
+    })
+
+    and('repo', docString => {
+      repo = docString
+    })
+
+    when('parsing', () => {
+      result = Issue.parsePartOf(reference, owner, repo)
+    })
+
+    then('match', () => {
+      expect(result).toEqual(undefined)
     })
   })
 })
