@@ -125,6 +125,35 @@ defineFeature(instance, test => {
     })
   })
 
+  test('Changes added when the placeholder is at the end of document', ({
+    given,
+    and,
+    when,
+    then
+  }) => {
+    let subtask: Subtask
+
+    given('body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    and('subtask', docString => {
+      subtask = JSON.parse(docString) as Subtask
+    })
+
+    when('added', () => {
+      issue = Issue.fromEventPayload(event)
+      issue.addSubtask(subtask)
+    })
+
+    then('body updated', docString => {
+      expect(issue.body).toEqual(docString)
+    })
+  })
+
   test('Changes not added on issue without placeholder', ({
     given,
     and,
