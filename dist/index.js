@@ -137,6 +137,9 @@ class Issue extends Entity_1.Entity {
                         }
                     }
                 });
+                if (section.isInside()) {
+                    section.leave(tree.children.length);
+                }
                 if (!section.found)
                     return tree;
                 const before = tree.children.filter((node, index) => index < (section.start || 0));

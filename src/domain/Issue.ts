@@ -178,6 +178,10 @@ export class Issue extends Entity<GitHubIssue> {
             }
           })
 
+          if (section.isInside()) {
+            section.leave((tree as Parent).children.length)
+          }
+
           if (!section.found) return tree
 
           const before = (tree as Parent).children.filter(

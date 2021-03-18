@@ -88,6 +88,42 @@ Feature: Issue instance
                   ## After
                   """
 
+        @issue-11
+        Scenario: Changes added when the placeholder is at the end of document
+            Given body
+                  """
+                  ## Background
+
+                  Write somethig about the issue...
+
+                  ## Traceability <!-- traceability -->
+                  """
+              And subtask
+                  """
+                  {
+                    "id": "3",
+                    "title": "Added",
+                    "closed": false,
+                    "removed": false,
+                    "repo": "issue-tracer",
+                    "owner": "CompliancePal"
+                  }
+                  """
+             When added
+             Then body updated
+                  """
+                  ## Background
+
+                  Write somethig about the issue...
+
+                  ## Traceability <!-- traceability -->
+                  <!-- Section created by CompliancePal. Do not edit -->
+
+                  ### Related issues
+
+                  - [ ] Added (#3)
+                  """
+
         @issue-9
         Scenario: Changes not added on issue without placeholder
             Given Issue body without placeholder
