@@ -86,7 +86,6 @@ Feature: Issue instance
                   - [ ] Added (#3)
 
                   ## After
-
                   """
 
         @issue-9
@@ -110,7 +109,6 @@ Feature: Issue instance
              Then body not updated
                   """
                   ## Something
-
                   """
 
         Scenario: partOf with local reference
