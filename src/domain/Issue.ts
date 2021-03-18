@@ -138,10 +138,6 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    //TODO: remove the section form the existing body
-
-    // const tree = processor.parse(this.body) as Parent
-
     const stringifier = unified()
       .use(markdown)
       .use(gfm)
@@ -182,6 +178,8 @@ export class Issue extends Entity<GitHubIssue> {
             }
           })
 
+          if (!section.found) return tree
+
           const before = (tree as Parent).children.filter(
             (node, index) => index < (section.start || 0)
           )
@@ -206,7 +204,7 @@ export class Issue extends Entity<GitHubIssue> {
 
     // console.log(stringifier.data().toMarkdownExtensions)
 
-    this.body = sectionBody.contents as string
+    this.body = (sectionBody.contents as string).trim()
   }
 
   protected detectsPartOf(): IPartOf | undefined {

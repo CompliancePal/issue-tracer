@@ -3,7 +3,7 @@ import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
 import {IPartOf, Issue, Subtask} from './Issue'
 
-const instance = loadFeature('./src/domain/Issue.instance.feature', {
+const instance = loadFeature('./features/Issue.instance.feature', {
   scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
     const issues = scenarioTags
       .filter(tag => tag.startsWith('@issue'))
@@ -125,6 +125,35 @@ defineFeature(instance, test => {
     })
   })
 
+  test('Changes not added on issue without placeholder', ({
+    given,
+    and,
+    when,
+    then
+  }) => {
+    let subtask: Subtask
+
+    given('Issue body without placeholder', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    and('new subtask', docString => {
+      subtask = JSON.parse(docString) as Subtask
+    })
+
+    when('subtask added', () => {
+      issue = Issue.fromEventPayload(event)
+      issue.addSubtask(subtask)
+    })
+
+    then('body not updated', docString => {
+      expect(issue.body).toEqual(docString)
+    })
+  })
+
   test('partOf with local reference', ({given, when, then}) => {
     given('Issue body', docString => {
       event = {...openEventPayload} as IssuesOpenedEvent
@@ -162,14 +191,16 @@ defineFeature(instance, test => {
   })
 })
 
-const classMethods = loadFeature('./src/domain/Issue.class.feature', {
-  // scenarioNameTemplate: ({scenarioTitle, scenarioTags}) =>
-  //   `${scenarioTitle} (${scenarioTags
-  //     .filter(tag => {
-  //       console.log(tag)
-  //       return tag.startsWith('@issue')
-  //     })
-  //     .join('')})`
+const classMethods = loadFeature('./features/Issue.class.feature', {
+  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
+    const issues = scenarioTags
+      .filter(tag => tag.startsWith('@issue'))
+      .map(tag => tag.replace('@issue-', '#'))
+
+    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
+
+    return `${scenarioTitle}${brackets}`
+  }
 })
 
 defineFeature(classMethods, test => {

@@ -86,7 +86,29 @@ Feature: Issue instance
                   - [ ] Added (#3)
 
                   ## After
+                  """
 
+        @issue-9
+        Scenario: Changes not added on issue without placeholder
+            Given Issue body without placeholder
+                  """
+                  ## Something
+                  """
+              And new subtask
+                  """
+                  {
+                    "id": "3",
+                    "title": "Added",
+                    "closed": false,
+                    "removed": false,
+                    "repo": "issue-tracer",
+                    "owner": "CompliancePal"
+                  }
+                  """
+             When subtask added
+             Then body not updated
+                  """
+                  ## Something
                   """
 
         Scenario: partOf with local reference
