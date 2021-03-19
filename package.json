@@ -28,6 +28,7 @@
   "dependencies": {
     "@actions/core": "^1.2.6",
     "@actions/github": "^4.0.0",
+    "@actions/glob": "^0.1.1",
     "@octokit/webhooks-definitions": "^3.62.5",
     "remark-frontmatter": "^3.0.0",
     "remark-gfm": "^1.0.0",

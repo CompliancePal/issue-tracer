@@ -4,7 +4,7 @@ import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {Issue} from '../domain/Issue'
 import {IssuesRepo} from '../repo/Issues'
 
-export const issuesHandler = async (): Promise<undefined> => {
+export const issuesHandler = async (): Promise<void> => {
   const ghToken = process.env.GITHUB_TOKEN
 
   if (ghToken === undefined) {

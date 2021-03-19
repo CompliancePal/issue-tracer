@@ -1,6 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {issuesHandler} from './actions/issues'
+import {pullRequestHandler} from './actions/pull_request'
 // import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 // import {Issue} from './domain/Issue'
 // import {IssuesRepo} from './repo/Issues'
@@ -17,6 +18,9 @@ async function run(): Promise<void> {
     switch (github.context.eventName) {
       case 'issues':
         await issuesHandler()
+        break
+      case 'pull_request':
+        await pullRequestHandler()
         break
       default:
     }
