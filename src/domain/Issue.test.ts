@@ -2,17 +2,10 @@ import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
 import {IPartOf, Issue, Subtask} from './Issue'
+import {scenarioNameTemplate} from '../utils/test'
 
 const instance = loadFeature('./features/Issue.instance.feature', {
-  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
-    const issues = scenarioTags
-      .filter(tag => tag.startsWith('@issue'))
-      .map(tag => tag.replace('@issue-', '#'))
-
-    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
-
-    return `${scenarioTitle}${brackets}`
-  }
+  scenarioNameTemplate
 })
 
 defineFeature(instance, test => {
@@ -221,15 +214,7 @@ defineFeature(instance, test => {
 })
 
 const classMethods = loadFeature('./features/Issue.class.feature', {
-  scenarioNameTemplate: ({scenarioTitle, scenarioTags}) => {
-    const issues = scenarioTags
-      .filter(tag => tag.startsWith('@issue'))
-      .map(tag => tag.replace('@issue-', '#'))
-
-    const brackets = issues.length > 0 ? ` (${issues.join(', ')})` : ''
-
-    return `${scenarioTitle}${brackets}`
-  }
+  scenarioNameTemplate
 })
 
 defineFeature(classMethods, test => {
