@@ -1,20 +1,63 @@
-import {defineFeature, loadFeature} from 'jest-cucumber'
+import {defineFeature, loadFeature, parseFeature} from 'jest-cucumber'
+import {PullRequestEvent} from '@octokit/webhooks-definitions/schema'
+import mock from 'mock-fs'
 import {PullRequest} from './PullRequest'
+import {scenarioNameTemplate} from '../utils/test'
 
-import {PullRequest as GitHubPullRequest} from '@octokit/webhooks-definitions/schema'
+import pullRequestEvent from '../payloads/pr.json'
 
-const features = loadFeature('features/PullRequest.feature')
+const features = loadFeature('features/PullRequest.feature', {
+  scenarioNameTemplate
+})
+
+const getPREvent = (body: string): PullRequestEvent => {
+  const pr = {...(pullRequestEvent as PullRequestEvent)}
+  pr.pull_request.body = body
+
+  return pr
+}
 
 defineFeature(features, test => {
-  test.only('Finds feature files in repository', ({given, when, then}) => {
-    given('feature files', () => {})
+  let event: PullRequestEvent
+  let pullRequest: PullRequest
+  let featureString: string
 
-    when('opening pull_request', async () => {
-      const pr = new PullRequest({} as GitHubPullRequest, 'owner', 'repo')
+  afterEach(() => {
+    mock.restore()
+  })
 
-      await pr.findFeatures()
+  test.only('Finds requirements to be resolved', ({given, when, then, and}) => {
+    given('PR body', docString => {
+      event = getPREvent(docString)
     })
 
-    then('files available', () => {})
+    and('features', docString => {
+      featureString = docString
+
+      mock({
+        features: {
+          'fake.feature': featureString
+        }
+      })
+    })
+
+    when('Creating the instance', async () => {
+      pullRequest = await PullRequest.fromEventPayload(event)
+    })
+
+    then('finds the requirement', docString => {
+      expect(pullRequest.resolvesRequirement).toEqual(parseInt(docString))
+    })
+
+    and('issue features', async () => {
+      const feature = parseFeature(featureString)
+      const testCases = await pullRequest.testCases
+
+      expect(testCases).toHaveLength(1)
+      expect(testCases[0].feature).toEqual(feature.title)
+      expect(testCases[0].title).toEqual(feature.scenarios[0].title)
+      expect(testCases[0].filename).toEqual('features/fake.feature')
+      expect(testCases[0].lineNumber).toEqual(feature.scenarios[0].lineNumber)
+    })
   })
 })
