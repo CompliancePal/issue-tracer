@@ -15,12 +15,16 @@ export const pullRequestHandler = async (ghToken: string): Promise<void> => {
         github.context.payload as PullRequestEvent
       )
 
-      repo = new IssuesRepo(ghToken)
-
       if (pullRequest.resolvesRequirement === undefined) {
         core.setFailed(`Action could not identify the resolved issue`)
         return
       }
+
+      core.info(
+        `Pull request contains ${pullRequest.testCases.length} test cases`
+      )
+
+      repo = new IssuesRepo(ghToken)
 
       issue = await repo.get({
         owner: pullRequest.owner,

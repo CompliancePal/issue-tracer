@@ -1,4 +1,5 @@
 import {relative} from 'path'
+import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {
   PullRequest as GitHubPullRequest,
@@ -26,6 +27,7 @@ const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
   const globber = await glob.create(['!.git', '**/*.feature'].join('\n'))
 
   for await (const file of globber.globGenerator()) {
+    core.info(`Processing feature file: ${file}`)
     const feature = loadFeature(file)
 
     for (const scenario of feature.scenarios) {

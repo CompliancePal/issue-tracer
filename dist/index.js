@@ -129,11 +129,12 @@ const pullRequestHandler = (ghToken) => __awaiter(void 0, void 0, void 0, functi
         case 'edited':
         case 'synchronize':
             pullRequest = yield PullRequest_1.PullRequest.fromEventPayload(github.context.payload);
-            repo = new Issues_1.IssuesRepo(ghToken);
             if (pullRequest.resolvesRequirement === undefined) {
                 core.setFailed(`Action could not identify the resolved issue`);
                 return;
             }
+            core.info(`Pull request contains ${pullRequest.testCases.length} test cases`);
+            repo = new Issues_1.IssuesRepo(ghToken);
             issue = yield repo.get({
                 owner: pullRequest.owner,
                 repo: pullRequest.repo,
@@ -515,6 +516,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.PullRequest = void 0;
 const path_1 = __webpack_require__(5622);
+const core = __importStar(__webpack_require__(2186));
 const glob = __importStar(__webpack_require__(8090));
 const jest_cucumber_1 = __webpack_require__(5550);
 const unified_1 = __importDefault(__webpack_require__(5075));
@@ -529,6 +531,7 @@ const findFeatures = (issue_number) => __awaiter(void 0, void 0, void 0, functio
     try {
         for (var _b = __asyncValues(globber.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
             const file = _c.value;
+            core.info(`Processing feature file: ${file}`);
             const feature = jest_cucumber_1.loadFeature(file);
             for (const scenario of feature.scenarios) {
                 if (scenario.tags.includes(`@issue-${issue_number}`)) {
