@@ -37,6 +37,9 @@ defineFeature(features, test => {
       mock({
         features: {
           'fake.feature': featureString
+        },
+        '.private-action': {
+          'ignore.feature': featureString
         }
       })
     })

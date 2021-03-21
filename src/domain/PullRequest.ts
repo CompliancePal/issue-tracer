@@ -27,11 +27,11 @@ const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
 
   const result: TestCase[] = []
   const globber = await glob.create(
-    [`!.git`, `!.private-action`, `**/*.feature`].join('\n')
+    [`**/*.feature`, `!.git`, `!.private-action`].join('\n')
   )
 
   for (const path of globber.getSearchPaths()) {
-    core.info(`Looking for feature files in ${path}`)
+    core.debug(`Looking for feature files in ${path}`)
   }
 
   for await (const file of globber.globGenerator()) {
