@@ -24,10 +24,13 @@ interface TestCase {
 
 const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
   core.info(`Running in ${process.cwd()}`)
-  core.info(`Looking for feature files in ${__dirname}`)
   const result: TestCase[] = []
   const globber = await glob.create(
-    ['!.git', '!.private-action', '**/*.feature'].join('\n')
+    [
+      `!${process.cwd()}/.git`,
+      `!${process.cwd()}/.private-action`,
+      `${process.cwd()}/**/*.feature`
+    ].join('\n')
   )
 
   for await (const file of globber.globGenerator()) {

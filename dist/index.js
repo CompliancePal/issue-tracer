@@ -527,9 +527,12 @@ const Entity_1 = __webpack_require__(6217);
 const findFeatures = (issue_number) => __awaiter(void 0, void 0, void 0, function* () {
     var e_1, _a;
     core.info(`Running in ${process.cwd()}`);
-    core.info(`Looking for feature files in ${__dirname}`);
     const result = [];
-    const globber = yield glob.create(['!.git', '!.private-action', '**/*.feature'].join('\n'));
+    const globber = yield glob.create([
+        `!${process.cwd()}/.git`,
+        `!${process.cwd()}/.private-action`,
+        `${process.cwd()}/**/*.feature`
+    ].join('\n'));
     try {
         for (var _b = __asyncValues(globber.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
             const file = _c.value;
