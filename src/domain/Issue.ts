@@ -173,7 +173,7 @@ export class Issue extends Entity<GitHubIssue> {
 
           const sectionTestCases =
             this.resolvedBy && this.resolvedBy.testCases.length > 0
-              ? `### Test cases\n\n${this.resolvedBy.details}`
+              ? `### Test cases\n\n${this.resolvedBy.details}\n`
               : null
 
           const sectionSubtasks = `### Related issues\n\n${Array.from(

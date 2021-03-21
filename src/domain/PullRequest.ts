@@ -1,8 +1,6 @@
 import {relative} from 'path'
 import * as core from '@actions/core'
-import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
-import * as nglob from 'glob'
 import {
   PullRequest as GitHubPullRequest,
   PullRequestEvent
@@ -26,27 +24,11 @@ interface TestCase {
 
 const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
   core.info(`Running in ${process.cwd()}`)
-  try {
-    await exec.exec('ls -al')
-  } catch (error) {
-    core.info('Could not list')
-  }
 
   const result: TestCase[] = []
   const globber = await glob.create(
-    [
-      // `!${process.cwd()}/.git`,
-      // `!${process.cwd()}/.private-action`,
-      // `${process.cwd()}/**/*.feature`
-      `!.git`,
-      `!.private-action`,
-      `**/*.feature`
-    ].join('\n')
+    [`!.git`, `!.private-action`, `**/*.feature`].join('\n')
   )
-
-  for (const file of nglob.sync(`${process.cwd()}/**/*.feature`)) {
-    core.info(`nglobbing ${file}`)
-  }
 
   for (const path of globber.getSearchPaths()) {
     core.info(`Looking for feature files in ${path}`)
