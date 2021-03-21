@@ -37,7 +37,7 @@ const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
     ].join('\n')
   )
 
-  for (const file of nglob.sync('**/*.feature')) {
+  for (const file of nglob.sync(`${process.cwd()}/**/*.feature`)) {
     core.info(`nglobbing ${file}`)
   }
 

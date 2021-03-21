@@ -537,8 +537,8 @@ const findFeatures = (issue_number) => __awaiter(void 0, void 0, void 0, functio
         `!.private-action`,
         `**/*.feature`
     ].join('\n'));
-    for (const file of nglob.sync('**/*.feature')) {
-        core.info(file);
+    for (const file of nglob.sync(`${process.cwd()}/**/*.feature`)) {
+        core.info(`nglobbing ${file}`);
     }
     for (const path of globber.getSearchPaths()) {
         core.info(`Looking for feature files in ${path}`);
