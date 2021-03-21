@@ -1,0 +1,20 @@
+name: Issue tracing
+on:
+  issues:
+  pull_request:
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: CompliancePal/token-retriever@main
+        id: retriever
+        with:
+          url: ${{ secrets.TOKEN_URL }}
+      - uses: invisionapp/private-action-loader@v3
+        with:
+          pal-repo-token: ${{ steps.retriever.outputs.token }}
+          pal-repo-name: CompliancePal/issue-tracer@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
