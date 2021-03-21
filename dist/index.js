@@ -528,9 +528,9 @@ const findFeatures = (issue_number) => __awaiter(void 0, void 0, void 0, functio
     var e_1, _a;
     core.info(`Running in ${process.cwd()}`);
     const result = [];
-    const globber = yield glob.create([`!.git`, `!.private-action`, `**/*.feature`].join('\n'));
+    const globber = yield glob.create([`**/*.feature`, `!.git`, `!.private-action`].join('\n'));
     for (const path of globber.getSearchPaths()) {
-        core.info(`Looking for feature files in ${path}`);
+        core.debug(`Looking for feature files in ${path}`);
     }
     try {
         for (var _b = __asyncValues(globber.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
