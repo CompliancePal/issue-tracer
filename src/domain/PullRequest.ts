@@ -1,5 +1,6 @@
 import {relative} from 'path'
 import * as core from '@actions/core'
+import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import {
   PullRequest as GitHubPullRequest,
@@ -22,14 +23,29 @@ interface TestCase {
   lineNumber: number
 }
 
-const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
+const findFeatures = async (
+  issue_number: number,
+  ref?: string
+): Promise<TestCase[]> => {
+  if (ref) {
+    try {
+      await exec.exec(`git checkout ${ref}`)
+      core.info(`Working in branch ${ref}`)
+    } catch (error) {
+      core.info('Could not switch branch')
+    }
+  }
+
   core.info(`Running in ${process.cwd()}`)
   const result: TestCase[] = []
   const globber = await glob.create(
     [
-      `!${process.cwd()}/.git`,
-      `!${process.cwd()}/.private-action`,
-      `${process.cwd()}/**/*.feature`
+      // `!${process.cwd()}/.git`,
+      // `!${process.cwd()}/.private-action`,
+      // `${process.cwd()}/**/*.feature`
+      `!.git`,
+      `!.private-action`,
+      `**/*.feature`
     ].join('\n')
   )
 
@@ -74,7 +90,8 @@ export class PullRequest extends Entity<GitHubPullRequest> {
 
     if (pullRequest.resolvesRequirement) {
       pullRequest.testCases = await findFeatures(
-        pullRequest.resolvesRequirement
+        pullRequest.resolvesRequirement,
+        event.pull_request.head.ref
       )
     }
 
