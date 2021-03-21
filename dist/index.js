@@ -529,7 +529,9 @@ const findFeatures = (issue_number, ref) => __awaiter(void 0, void 0, void 0, fu
     var e_1, _a;
     if (ref) {
         try {
-            yield exec.exec(`git checkout ${ref}`);
+            yield exec.exec(`git checkout ${ref}`, undefined, {
+                cwd: process.cwd()
+            });
             core.info(`Working in branch ${ref}`);
         }
         catch (error) {

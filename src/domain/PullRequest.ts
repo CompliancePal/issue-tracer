@@ -29,7 +29,10 @@ const findFeatures = async (
 ): Promise<TestCase[]> => {
   if (ref) {
     try {
-      await exec.exec(`git checkout ${ref}`)
+      await exec.exec(`git checkout ${ref}`, undefined, {
+        cwd: process.cwd()
+      })
+
       core.info(`Working in branch ${ref}`)
     } catch (error) {
       core.info('Could not switch branch')
