@@ -126,6 +126,7 @@ const pullRequestHandler = (ghToken) => __awaiter(void 0, void 0, void 0, functi
     let issue, repo, pullRequest;
     switch (github.context.payload.action) {
         case 'opened':
+        case 'synchronize':
             pullRequest = yield PullRequest_1.PullRequest.fromEventPayload(github.context.payload);
             repo = new Issues_1.IssuesRepo(ghToken);
             if (pullRequest.resolvesRequirement === undefined) {
@@ -169,10 +170,11 @@ const pullRequestHandler = (ghToken) => __awaiter(void 0, void 0, void 0, functi
             // })
             issue.addResolvedBy(pullRequest);
             issue.save(repo);
+            core.info(`Resolved issue ${issue.number} updated sucessfuly`);
             break;
         default:
     }
-    core.info(JSON.stringify(github.context.payload));
+    // core.info(JSON.stringify(github.context.payload))
 });
 exports.pullRequestHandler = pullRequestHandler;
 

@@ -9,6 +9,7 @@ export const pullRequestHandler = async (ghToken: string): Promise<void> => {
 
   switch (github.context.payload.action) {
     case 'opened':
+    case 'synchronize':
       pullRequest = await PullRequest.fromEventPayload(
         github.context.payload as PullRequestEvent
       )
@@ -64,9 +65,11 @@ export const pullRequestHandler = async (ghToken: string): Promise<void> => {
 
       issue.save(repo)
 
+      core.info(`Resolved issue ${issue.number} updated sucessfuly`)
+
       break
     default:
   }
 
-  core.info(JSON.stringify(github.context.payload))
+  // core.info(JSON.stringify(github.context.payload))
 }
