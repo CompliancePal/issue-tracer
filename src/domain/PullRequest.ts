@@ -33,6 +33,10 @@ const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
     ].join('\n')
   )
 
+  for (const path of globber.getSearchPaths()) {
+    core.info(`Looking for feature files in ${path}`)
+  }
+
   for await (const file of globber.globGenerator()) {
     core.info(`Processing feature file: ${file}`)
     const feature = loadFeature(file)

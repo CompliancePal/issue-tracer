@@ -533,6 +533,9 @@ const findFeatures = (issue_number) => __awaiter(void 0, void 0, void 0, functio
         `!${process.cwd()}/.private-action`,
         `${process.cwd()}/**/*.feature`
     ].join('\n'));
+    for (const path of globber.getSearchPaths()) {
+        core.info(`Looking for feature files in ${path}`);
+    }
     try {
         for (var _b = __asyncValues(globber.globGenerator()), _c; _c = yield _b.next(), !_c.done;) {
             const file = _c.value;
