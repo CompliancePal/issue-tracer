@@ -9,6 +9,7 @@ export const pullRequestHandler = async (ghToken: string): Promise<void> => {
 
   switch (github.context.payload.action) {
     case 'opened':
+    case 'edited':
     case 'synchronize':
       pullRequest = await PullRequest.fromEventPayload(
         github.context.payload as PullRequestEvent
