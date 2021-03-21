@@ -1,7 +1,7 @@
 import {relative} from 'path'
 import * as core from '@actions/core'
-import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
+import * as nglob from 'glob'
 import {
   PullRequest as GitHubPullRequest,
   PullRequestEvent
@@ -23,22 +23,7 @@ interface TestCase {
   lineNumber: number
 }
 
-const findFeatures = async (
-  issue_number: number,
-  ref?: string
-): Promise<TestCase[]> => {
-  if (ref) {
-    try {
-      await exec.exec(`git checkout ${ref}`, undefined, {
-        cwd: process.cwd()
-      })
-
-      core.info(`Working in branch ${ref}`)
-    } catch (error) {
-      core.info('Could not switch branch')
-    }
-  }
-
+const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
   core.info(`Running in ${process.cwd()}`)
   const result: TestCase[] = []
   const globber = await glob.create(
@@ -51,6 +36,10 @@ const findFeatures = async (
       `**/*.feature`
     ].join('\n')
   )
+
+  for (const file of nglob.sync('**/*.feature')) {
+    core.info(`nglobbing ${file}`)
+  }
 
   for (const path of globber.getSearchPaths()) {
     core.info(`Looking for feature files in ${path}`)
@@ -93,8 +82,7 @@ export class PullRequest extends Entity<GitHubPullRequest> {
 
     if (pullRequest.resolvesRequirement) {
       pullRequest.testCases = await findFeatures(
-        pullRequest.resolvesRequirement,
-        event.pull_request.head.ref
+        pullRequest.resolvesRequirement
       )
     }
 
