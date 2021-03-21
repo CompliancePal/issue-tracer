@@ -20,18 +20,50 @@ interface TestCase {
   title: string
   lineNumber: number
 }
+
+const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
+  const result: TestCase[] = []
+  const globber = await glob.create(['!.git', '**/*.feature'].join('\n'))
+
+  for await (const file of globber.globGenerator()) {
+    const feature = loadFeature(file)
+
+    for (const scenario of feature.scenarios) {
+      if (scenario.tags.includes(`@issue-${issue_number}`)) {
+        result.push({
+          filename: relative(process.cwd(), file),
+          feature: feature.title,
+          title: scenario.title,
+          steps: scenario.steps,
+          lineNumber: scenario.lineNumber
+        })
+      }
+    }
+  }
+
+  return result
+}
+
 export class PullRequest extends Entity<GitHubPullRequest> {
   readonly owner: string
   readonly repo: string
   readonly resolvesRequirement?: number
-  // testCases?: TestCase[]
+  testCases: TestCase[]
 
   static async fromEventPayload(event: PullRequestEvent): Promise<PullRequest> {
+    //TODO: move the feature globbing into a repository
+
     const pullRequest = new PullRequest(
       event.pull_request,
       event.repository.owner.login,
       event.repository.name
     )
+
+    if (pullRequest.resolvesRequirement) {
+      pullRequest.testCases = await findFeatures(
+        pullRequest.resolvesRequirement
+      )
+    }
 
     return pullRequest
   }
@@ -42,17 +74,36 @@ export class PullRequest extends Entity<GitHubPullRequest> {
     this.repo = repo
 
     this.resolvesRequirement = this.detectRequirement()
+    this.testCases = []
   }
 
-  get testCases(): Promise<TestCase[]> {
-    return (async () => {
-      try {
-        return await this.findFeatures()
-      } catch (error) {
-        return []
-      }
-    })()
+  get number(): number {
+    return this.props.number
   }
+
+  /**
+   * Returns the test cases as HTML details
+   */
+  get details(): string | null {
+    return this.testCases.length > 0
+      ? this.testCases
+          .map(
+            (testCase: TestCase) =>
+              `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`
+          )
+          .join('\n')
+      : null
+  }
+
+  // get testCases(): Promise<TestCase[]> {
+  //   return (async () => {
+  //     try {
+  //       return await this.findFeatures()
+  //     } catch (error) {
+  //       return []
+  //     }
+  //   })()
+  // }
 
   protected detectRequirement(): number | undefined {
     let issue_number: number | undefined
@@ -75,55 +126,5 @@ export class PullRequest extends Entity<GitHubPullRequest> {
     }
 
     return issue_number
-  }
-
-  /**
-   * TODO: Find the resolved requirement and verify that it it closes the issue in the issue timeline
-{
-  repository(name: "issue-tracer-test", owner: "CompliancePal") {
-    issue(number: 31) {
-      id
-      number
-      timelineItems(first: 10) {
-        nodes {
-          ... on CrossReferencedEvent {
-            id
-            source {
-              ... on PullRequest {
-                id
-                number
-              }
-            }
-            willCloseTarget
-          }
-        }
-      }
-    }
-  }
-}
-   */
-
-  //TODO: move the feature globbing into a repository
-  protected async findFeatures(): Promise<TestCase[]> {
-    const result: TestCase[] = []
-    const globber = await glob.create(['!.git', '**/*.feature'].join('\n'))
-
-    for await (const file of globber.globGenerator()) {
-      const feature = loadFeature(file)
-
-      for (const scenario of feature.scenarios) {
-        if (scenario.tags.includes(`@issue-${this.resolvesRequirement}`)) {
-          result.push({
-            filename: relative(process.cwd(), file),
-            feature: feature.title,
-            title: scenario.title,
-            steps: scenario.steps,
-            lineNumber: scenario.lineNumber
-          })
-        }
-      }
-    }
-
-    return result
   }
 }

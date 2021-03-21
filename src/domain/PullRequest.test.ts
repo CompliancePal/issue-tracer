@@ -51,7 +51,7 @@ defineFeature(features, test => {
 
     and('issue features', async () => {
       const feature = parseFeature(featureString)
-      const testCases = await pullRequest.testCases
+      const testCases = pullRequest.testCases
 
       expect(testCases).toHaveLength(1)
       expect(testCases[0].feature).toEqual(feature.title)
