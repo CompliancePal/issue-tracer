@@ -768,12 +768,18 @@ function styleMarkdownOutput(options) {
     data.toMarkdownExtensions.push({
         bullet: '-',
         listItemIndent: 'one',
+        rule: '-',
         join: [
             //@ts-ignore
             (first, second) => {
+                // do not add space between the heading and the comment
                 if (first.type === 'heading' &&
                     second.type === 'html' &&
                     second.value === options.comment) {
+                    return 0;
+                }
+                // do not add space in frontmatter
+                if (first.type === 'thematicBreak' && second.type === 'paragraph') {
                     return 0;
                 }
                 return true;
