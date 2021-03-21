@@ -633,7 +633,7 @@ Feature: ${testCase.feature}
 ${testCase.steps
             .map(step => {
             // process.stdout.write(JSON.stringify(step))
-            return `${this.leftPad(this.capitalize(step.keyword), 10)} ${step.stepText}`;
+            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
         })
             .join('\n')}
 \`\`\`
