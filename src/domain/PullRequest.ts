@@ -1,5 +1,6 @@
 import {relative} from 'path'
 import * as core from '@actions/core'
+import * as exec from '@actions/exec'
 import * as glob from '@actions/glob'
 import * as nglob from 'glob'
 import {
@@ -25,6 +26,12 @@ interface TestCase {
 
 const findFeatures = async (issue_number: number): Promise<TestCase[]> => {
   core.info(`Running in ${process.cwd()}`)
+  try {
+    await exec.exec('ls -al')
+  } catch (error) {
+    core.info('Could not list')
+  }
+
   const result: TestCase[] = []
   const globber = await glob.create(
     [
