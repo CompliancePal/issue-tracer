@@ -14,7 +14,7 @@ import visit from 'unist-util-visit'
 import {Entity} from './Entity'
 import {ParsedStep} from 'jest-cucumber/dist/src/models'
 
-interface TestCase {
+export interface TestCase {
   filename: string
   feature: string
   steps: ParsedStep[]
@@ -97,10 +97,9 @@ export class PullRequest extends Entity<GitHubPullRequest> {
   get details(): string | null {
     return this.testCases.length > 0
       ? this.testCases
-          .map(
-            (testCase: TestCase) =>
-              `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`
-          )
+          .map((testCase: TestCase) => {
+            return `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`
+          })
           .join('\n')
       : null
   }
@@ -136,5 +135,35 @@ export class PullRequest extends Entity<GitHubPullRequest> {
     }
 
     return issue_number
+  }
+}
+
+export class TestCaseExporter {
+  details(testCase: TestCase): string {
+    return `<details>
+<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
+\n
+\`\`\`gherkin
+Feature: ${testCase.feature}
+\n
+  Scenario: ${testCase.title}
+${testCase.steps
+  .map(step => {
+    // process.stdout.write(JSON.stringify(step))
+    return `${this.leftPad(this.capitalize(step.keyword), 10)} ${step.stepText}`
+  })
+  .join('\n')}
+\`\`\`
+\n
+</details>
+`
+  }
+
+  protected leftPad(text: string, length: number): string {
+    return text.padStart(length)
+  }
+
+  protected capitalize(input: string): string {
+    return input[0].toUpperCase() + input.substring(1)
   }
 }

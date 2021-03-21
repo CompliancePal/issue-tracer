@@ -514,7 +514,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.PullRequest = void 0;
+exports.TestCaseExporter = exports.PullRequest = void 0;
 const path_1 = __webpack_require__(5622);
 const core = __importStar(__webpack_require__(2186));
 const glob = __importStar(__webpack_require__(8090));
@@ -586,7 +586,9 @@ class PullRequest extends Entity_1.Entity {
     get details() {
         return this.testCases.length > 0
             ? this.testCases
-                .map((testCase) => `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`)
+                .map((testCase) => {
+                return `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`;
+            })
                 .join('\n')
             : null;
     }
@@ -618,6 +620,34 @@ class PullRequest extends Entity_1.Entity {
     }
 }
 exports.PullRequest = PullRequest;
+class TestCaseExporter {
+    details(testCase) {
+        return `<details>
+<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
+\n
+\`\`\`gherkin
+Feature: ${testCase.feature}
+\n
+  Scenario: ${testCase.title}
+${testCase.steps
+            .map(step => {
+            // process.stdout.write(JSON.stringify(step))
+            return `${this.leftPad(this.capitalize(step.keyword), 10)} ${step.stepText}`;
+        })
+            .join('\n')}
+\`\`\`
+\n
+</details>
+`;
+    }
+    leftPad(text, length) {
+        return text.padStart(length);
+    }
+    capitalize(input) {
+        return input[0].toUpperCase() + input.substring(1);
+    }
+}
+exports.TestCaseExporter = TestCaseExporter;
 
 
 /***/ }),
