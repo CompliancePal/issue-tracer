@@ -4,14 +4,7 @@ import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {Issue} from '../domain/Issue'
 import {IssuesRepo} from '../repo/Issues'
 
-export const issuesHandler = async (): Promise<undefined> => {
-  const ghToken = process.env.GITHUB_TOKEN
-
-  if (ghToken === undefined) {
-    core.setFailed(`GITHUB_TOKEN not provided`)
-    return
-  }
-
+export const issuesHandler = async (ghToken: string): Promise<void> => {
   let issue, repo, relatedIssue
 
   switch (github.context.payload.action) {
@@ -52,7 +45,8 @@ export const issuesHandler = async (): Promise<undefined> => {
         repo: issue.repo
       })
 
-      await repo.save(relatedIssue)
+      await relatedIssue.save(repo)
+      // await repo.save(relatedIssue)
       core.info(`Related issue ${relatedIssue.number} updated sucessfuly`)
 
       core.setOutput('partOf', issue.partOf)

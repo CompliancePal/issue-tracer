@@ -14,6 +14,8 @@ import {Parent} from 'unist'
 import {Entity} from './Entity'
 import {Section} from './Section'
 import {styleMarkdownOutput} from '../plugins/unified'
+import {IssuesRepo} from '../repo/Issues'
+import {PullRequest} from './PullRequest'
 
 export interface IPartOf {
   owner: string
@@ -74,6 +76,7 @@ export class Issue extends Entity<GitHubIssue> {
   readonly owner: string
   readonly repo: string
   subtasks: Map<string, Subtask>
+  resolvedBy?: PullRequest
 
   protected constructor(issue: GitHubIssue, owner: string, repo: string) {
     super(issue)
@@ -125,6 +128,10 @@ export class Issue extends Entity<GitHubIssue> {
     )
   }
 
+  async save(repo: IssuesRepo): Promise<void> {
+    return repo.save(this)
+  }
+
   /**
    * Is cross reference when the owner or the repo name are different
    */
@@ -138,6 +145,16 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
+    this.updateBody()
+  }
+
+  addResolvedBy(pullRequest: PullRequest): void {
+    this.resolvedBy = pullRequest
+
+    this.updateBody()
+  }
+
+  protected updateBody(): void {
     const stringifier = unified()
       .use(markdown)
       .use(gfm)
@@ -148,7 +165,18 @@ export class Issue extends Entity<GitHubIssue> {
         return tree => {
           const section = new Section('traceability')
 
-          const sectionContent = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n\n### Related issues\n\n${Array.from(
+          const sectionHeading = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`
+
+          const sectionResolvedBy = this.resolvedBy
+            ? `### ResolvedBy\n\nChange request #${this.resolvedBy.number} will close this issue.`
+            : null
+
+          const sectionTestCases =
+            this.resolvedBy && this.resolvedBy.testCases.length > 0
+              ? `### Test cases\n\n${this.resolvedBy.details}\n`
+              : null
+
+          const sectionSubtasks = `### Related issues\n\n${Array.from(
             this.subtasks.values()
           )
             .map(
@@ -193,7 +221,16 @@ export class Issue extends Entity<GitHubIssue> {
               index >= (section.end || (tree as Parent).children.length)
           )
 
-          const sectionTree = processor.parse(sectionContent) as Parent
+          const sectionTree = processor.parse(
+            [
+              sectionHeading,
+              sectionResolvedBy,
+              sectionTestCases,
+              sectionSubtasks
+            ]
+              .filter(part => part !== null)
+              .join('\n')
+          ) as Parent
 
           const result = processor.parse('') as Parent
 
