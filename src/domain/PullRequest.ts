@@ -95,10 +95,12 @@ export class PullRequest extends Entity<GitHubPullRequest> {
    * Returns the test cases as HTML details
    */
   get details(): string | null {
+    const exporter = new TestCaseExporter()
+
     return this.testCases.length > 0
       ? this.testCases
           .map((testCase: TestCase) => {
-            return `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`
+            return exporter.details(testCase)
           })
           .join('\n')
       : null

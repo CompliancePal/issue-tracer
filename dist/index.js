@@ -584,10 +584,11 @@ class PullRequest extends Entity_1.Entity {
      * Returns the test cases as HTML details
      */
     get details() {
+        const exporter = new TestCaseExporter();
         return this.testCases.length > 0
             ? this.testCases
                 .map((testCase) => {
-                return `<details><summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>add here the details as markdown</details>`;
+                return exporter.details(testCase);
             })
                 .join('\n')
             : null;
