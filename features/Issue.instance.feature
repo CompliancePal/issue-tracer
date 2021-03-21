@@ -45,9 +45,15 @@ Feature: Issue instance
              Then Issue ignores
 
         @issue-7
+        @issue-15
         Scenario: Changes preserves content outside placeholder
             Given event body
                   """
+                  ---
+                  partOf: #1
+
+                  ---
+
                   ## Before
 
                   ## Traceability <!-- traceability -->
@@ -74,6 +80,11 @@ Feature: Issue instance
              When subtask added
              Then content outside placeholder is not affected
                   """
+                  ---
+                  partOf: #1
+
+                  ---
+
                   ## Before
 
                   ## Traceability <!-- traceability -->
