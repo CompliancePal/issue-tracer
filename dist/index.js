@@ -229,6 +229,7 @@ const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
 const Section_1 = __webpack_require__(6522);
 const unified_2 = __webpack_require__(4079);
+const SectionExporter_1 = __webpack_require__(4531);
 const subtaskToString = (subtask, isCrossReference) => {
     const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
     return `${reference}#${subtask.id}`;
@@ -321,14 +322,11 @@ class Issue extends Entity_1.Entity {
             .use(() => {
             return tree => {
                 const section = new Section_1.Section('traceability');
-                const sectionHeading = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`;
-                const sectionResolvedBy = this.resolvedBy
-                    ? `### ResolvedBy\n\nChange request #${this.resolvedBy.number} will close this issue.`
-                    : null;
-                const sectionTestCases = this.resolvedBy && this.resolvedBy.testCases.length > 0
-                    ? `### Test cases\n\n${this.resolvedBy.details}\n`
-                    : null;
-                const sectionSubtasks = `### Related issues\n\n${Array.from(this.subtasks.values())
+                const exporter = new SectionExporter_1.SectionExporter(2);
+                const sectionHeading = exporter.heading();
+                const resolvedBySection = exporter.resolvedBy(this.resolvedBy);
+                const testCasesSection = this.resolvedBy && exporter.testCases(this.resolvedBy);
+                const subtasksSection = `### Related issues\n\n${Array.from(this.subtasks.values())
                     .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
                     .join('\n')}\n`;
                 const processor = unified_1.default().use(remark_parse_1.default).use(remark_gfm_1.default);
@@ -355,9 +353,9 @@ class Issue extends Entity_1.Entity {
                 const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
                 const sectionTree = processor.parse([
                     sectionHeading,
-                    sectionResolvedBy,
-                    sectionTestCases,
-                    sectionSubtasks
+                    resolvedBySection,
+                    testCasesSection,
+                    subtasksSection
                 ]
                     .filter(part => part !== null)
                     .join('\n'));
@@ -514,7 +512,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.TestCaseExporter = exports.PullRequest = void 0;
+exports.PullRequest = void 0;
 const path_1 = __webpack_require__(5622);
 const core = __importStar(__webpack_require__(2186));
 const glob = __importStar(__webpack_require__(8090));
@@ -580,19 +578,6 @@ class PullRequest extends Entity_1.Entity {
     get number() {
         return this.props.number;
     }
-    /**
-     * Returns the test cases as HTML details
-     */
-    get details() {
-        const exporter = new TestCaseExporter();
-        return this.testCases.length > 0
-            ? this.testCases
-                .map((testCase) => {
-                return exporter.details(testCase);
-            })
-                .join('\n')
-            : null;
-    }
     // get testCases(): Promise<TestCase[]> {
     //   return (async () => {
     //     try {
@@ -621,34 +606,6 @@ class PullRequest extends Entity_1.Entity {
     }
 }
 exports.PullRequest = PullRequest;
-class TestCaseExporter {
-    details(testCase) {
-        return `<details>
-<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
-\n
-\`\`\`gherkin
-Feature: ${testCase.feature}
-\n
-  Scenario: ${testCase.title}
-${testCase.steps
-            .map(step => {
-            // process.stdout.write(JSON.stringify(step))
-            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
-        })
-            .join('\n')}
-\`\`\`
-\n
-</details>
-`;
-    }
-    leftPad(text, length) {
-        return text.padStart(length);
-    }
-    capitalize(input) {
-        return input[0].toUpperCase() + input.substring(1);
-    }
-}
-exports.TestCaseExporter = TestCaseExporter;
 
 
 /***/ }),
@@ -712,6 +669,69 @@ class Section {
     }
 }
 exports.Section = Section;
+
+
+/***/ }),
+
+/***/ 4531:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SectionExporter = void 0;
+class SectionExporter {
+    constructor(depth) {
+        this.depth = depth;
+    }
+    headingString(increment) {
+        return '#'.repeat(this.depth + increment);
+    }
+    heading() {
+        return `${this.headingString(0)} Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`;
+    }
+    resolvedBy(pullRequest) {
+        return pullRequest
+            ? `${this.headingString(1)} Resolved by\n\nChange request #${pullRequest.number} will close this issue.`
+            : null;
+    }
+    testCases({ testCases }) {
+        const details = testCases
+            .map((testCase) => {
+            return this.testCaseDetails(testCase);
+        })
+            .join('\n');
+        return testCases.length > 0
+            ? `${this.headingString(1)} Test cases\n\n${details}\n`
+            : null;
+    }
+    testCaseDetails(testCase) {
+        return `<details>
+<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
+\n
+\`\`\`gherkin
+Feature: ${testCase.feature}
+\n
+  Scenario: ${testCase.title}
+${testCase.steps
+            .map(step => {
+            // process.stdout.write(JSON.stringify(step))
+            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
+        })
+            .join('\n')}
+\`\`\`
+\n
+</details>
+`;
+    }
+    leftPad(text, length) {
+        return text.padStart(length);
+    }
+    capitalize(input) {
+        return input[0].toUpperCase() + input.substring(1);
+    }
+}
+exports.SectionExporter = SectionExporter;
 
 
 /***/ }),
