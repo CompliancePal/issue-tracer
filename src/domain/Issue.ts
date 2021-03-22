@@ -16,6 +16,7 @@ import {Section} from './Section'
 import {styleMarkdownOutput} from '../plugins/unified'
 import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
+import {SectionExporter} from './exporters/SectionExporter'
 
 export interface IPartOf {
   owner: string
@@ -164,19 +165,16 @@ export class Issue extends Entity<GitHubIssue> {
       .use(() => {
         return tree => {
           const section = new Section('traceability')
+          const exporter = new SectionExporter(2)
 
-          const sectionHeading = `## Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`
+          const sectionHeading = exporter.heading()
 
-          const sectionResolvedBy = this.resolvedBy
-            ? `### ResolvedBy\n\nChange request #${this.resolvedBy.number} will close this issue.`
-            : null
+          const resolvedBySection = exporter.resolvedBy(this.resolvedBy)
 
-          const sectionTestCases =
-            this.resolvedBy && this.resolvedBy.testCases.length > 0
-              ? `### Test cases\n\n${this.resolvedBy.details}\n`
-              : null
+          const testCasesSection =
+            this.resolvedBy && exporter.testCases(this.resolvedBy)
 
-          const sectionSubtasks = `### Related issues\n\n${Array.from(
+          const subtasksSection = `### Related issues\n\n${Array.from(
             this.subtasks.values()
           )
             .map(
@@ -224,9 +222,9 @@ export class Issue extends Entity<GitHubIssue> {
           const sectionTree = processor.parse(
             [
               sectionHeading,
-              sectionResolvedBy,
-              sectionTestCases,
-              sectionSubtasks
+              resolvedBySection,
+              testCasesSection,
+              subtasksSection
             ]
               .filter(part => part !== null)
               .join('\n')

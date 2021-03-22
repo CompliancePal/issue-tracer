@@ -1,6 +1,7 @@
 import {defineFeature, loadFeature, parseFeature} from 'jest-cucumber'
-import {scenarioNameTemplate} from '../utils/test'
-import {TestCase, TestCaseExporter} from './PullRequest'
+import {scenarioNameTemplate} from '../../utils/test'
+import {TestCase} from '../PullRequest'
+import {SectionExporter} from './SectionExporter'
 
 const features = loadFeature('features/TestCaseExporter.feature', {
   scenarioNameTemplate
@@ -24,9 +25,9 @@ defineFeature(features, test => {
     })
 
     when('exported', () => {
-      const exporter = new TestCaseExporter()
+      const exporter = new SectionExporter(2)
 
-      result = exporter.details(testCase)
+      result = exporter.testCaseDetails(testCase)
     })
 
     then('result', () => {
