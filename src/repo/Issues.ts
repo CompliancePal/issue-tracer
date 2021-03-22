@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {Issue as GitHubIssue} from '@octokit/webhooks-definitions/schema'
 
@@ -12,7 +11,6 @@ export class IssuesRepo {
   }
 
   async get({owner, repo, issue_number}: IPartOf): Promise<Issue | undefined> {
-    core.info([owner, repo, issue_number].join(', '))
     try {
       const gh = github.getOctokit(this.token)
 
@@ -24,7 +22,6 @@ export class IssuesRepo {
 
       return Issue.fromApiPayload(response.data as GitHubIssue, owner, repo)
     } catch (error) {
-      core.info(JSON.stringify(error))
       return
     }
   }

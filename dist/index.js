@@ -243,10 +243,8 @@ class Issue extends Entity_1.Entity {
         this.partOf = this.detectsPartOf();
         this.subtasks = this.detectsSubIssues();
     }
-    static fromEventPayload(event) {
-        const owner = event.repository.owner.login;
-        const repo = event.repository.name;
-        return new Issue(event.issue, owner, repo);
+    static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
+        return new Issue(issue, owner, repo);
     }
     static fromApiPayload(payload, owner, repo) {
         return new Issue(payload, owner, repo);
@@ -303,8 +301,11 @@ class Issue extends Entity_1.Entity {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
     addSubtask(subtask) {
-        // FIXME: add cross reference
-        const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`;
+        const id = this.isCrossReference(subtask)
+            ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
+            : subtask.id.startsWith('#')
+                ? subtask.id
+                : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
         this.updateBody();
     }
@@ -878,7 +879,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.IssuesRepo = void 0;
-const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
 class IssuesRepo {
@@ -887,7 +887,6 @@ class IssuesRepo {
     }
     get({ owner, repo, issue_number }) {
         return __awaiter(this, void 0, void 0, function* () {
-            core.info([owner, repo, issue_number].join(', '));
             try {
                 const gh = github.getOctokit(this.token);
                 const response = yield gh.issues.get({
@@ -898,7 +897,6 @@ class IssuesRepo {
                 return Issue_1.Issue.fromApiPayload(response.data, owner, repo);
             }
             catch (error) {
-                core.info(JSON.stringify(error));
                 return;
             }
         });

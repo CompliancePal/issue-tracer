@@ -7,6 +7,9 @@ Feature: TestCaseExporter
 
         Scenario: details
             Given test case
+                  \"\"\"
+                  input
+                  \"\"\"
              When exported
              Then result
             """
@@ -21,10 +24,10 @@ Feature: TestCaseExporter
 Feature: TestCaseExporter
 
 
-  Scenario: details
-     Given test case
-      When exported
-      Then result
+        Scenario: details
+            Given test case
+             When exported
+             Then result
 ```
 
 

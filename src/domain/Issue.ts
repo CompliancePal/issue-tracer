@@ -42,10 +42,14 @@ const subtaskToString = (
 }
 
 export class Issue extends Entity<GitHubIssue> {
-  static fromEventPayload(event: IssuesOpenedEvent): Issue {
-    const owner = event.repository.owner.login
-    const repo = event.repository.name
-    return new Issue(event.issue, owner, repo)
+  static fromEventPayload({
+    issue,
+    repository: {
+      name: repo,
+      owner: {login: owner}
+    }
+  }: IssuesOpenedEvent): Issue {
+    return new Issue(issue, owner, repo)
   }
 
   static fromApiPayload(
@@ -141,8 +145,11 @@ export class Issue extends Entity<GitHubIssue> {
   }
 
   addSubtask(subtask: Subtask): void {
-    // FIXME: add cross reference
-    const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`
+    const id = this.isCrossReference(subtask)
+      ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
+      : subtask.id.startsWith('#')
+      ? subtask.id
+      : `#${subtask.id}`
 
     this.subtasks.set(id, subtask)
 

@@ -118,6 +118,35 @@ defineFeature(instance, test => {
     })
   })
 
+  test('Added duplicate cross reference subtask', ({
+    given,
+    and,
+    when,
+    then
+  }) => {
+    let subtask: Subtask
+
+    given('event body', docString => {
+      event = {
+        ...openEventPayload
+      } as IssuesOpenedEvent
+      event.issue.body = docString
+    })
+
+    and('existing cross reference subtask', docString => {
+      subtask = JSON.parse(docString) as Subtask
+    })
+
+    when('subtask added', () => {
+      issue = Issue.fromEventPayload(event)
+      issue.addSubtask(subtask)
+    })
+
+    then('issue body unchanged', docString => {
+      expect(issue.body).toEqual(docString)
+    })
+  })
+
   test('Changes added when the placeholder is at the end of document', ({
     given,
     and,
