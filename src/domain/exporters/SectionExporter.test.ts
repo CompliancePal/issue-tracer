@@ -3,7 +3,7 @@ import {scenarioNameTemplate} from '../../utils/test'
 import {TestCase} from '../PullRequest'
 import {SectionExporter} from './SectionExporter'
 
-const features = loadFeature('features/TestCaseExporter.feature', {
+const features = loadFeature('features/SectionExporter.feature', {
   scenarioNameTemplate
 })
 
