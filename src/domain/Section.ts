@@ -27,6 +27,10 @@ export class Section {
     return this.props.start !== undefined && this.props.end !== undefined
   }
 
+  get depth(): number | undefined {
+    return this.props.depth
+  }
+
   enter(start: number, depth: number): void {
     this.props.start = start
     this.props.depth = depth

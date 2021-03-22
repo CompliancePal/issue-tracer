@@ -31,6 +31,7 @@ export interface Subtask {
   removed: boolean
   repo: string
   owner: string
+  toString(): string
 }
 
 const subtaskToString = (
@@ -90,7 +91,7 @@ export class Issue extends Entity<GitHubIssue> {
     this.owner = owner
     this.repo = repo
     this.partOf = this.detectsPartOf()
-    this.subtasks = this.detectsSubIssues()
+    // this.subtasks = this.detectsSubtasks()
   }
 
   get body(): string {
@@ -167,7 +168,7 @@ export class Issue extends Entity<GitHubIssue> {
       .use(markdown)
       .use(gfm)
       .use(styleMarkdownOutput, {
-        comment: '<!-- Section created by CompliancePal. Do not edit -->'
+        comment: SectionExporter.COMMENT
       })
       .use(() => {
         return tree => {
@@ -248,8 +249,6 @@ export class Issue extends Entity<GitHubIssue> {
 
     const sectionBody = stringifier.processSync(this.body)
 
-    // console.log(stringifier.data().toMarkdownExtensions)
-
     this.body = (sectionBody.contents as string).trim()
   }
 
@@ -299,71 +298,64 @@ export class Issue extends Entity<GitHubIssue> {
     return partOf
   }
 
-  protected detectsSubIssues(): Map<string, Subtask> {
+  protected detectsSubtasks(): Map<string, Subtask> {
     const subtasks = new Map<string, Subtask>()
 
-    unified()
+    const tree = unified()
       .use(markdown)
       .use(gfm)
-      .use(stringify)
-      .use(() => {
-        return tree => {
-          const section = new Section('traceability')
+      // .use(stringify)
+      .parse(this.props.body)
 
-          visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
-            switch (node.type) {
-              case 'heading':
-                // no information
-                if (section.isStartMarker(node)) {
-                  section.enter(position, node.depth as number)
-                } else {
-                  // inside section
-                  if (section.isInside()) {
-                    // end
-                    if (section.isEndMarker(node.depth as number)) {
-                      section.leave(position)
-                    }
-                  }
-                }
-                break
-              case 'list':
-                if (section.isInside()) {
-                  visit(node, 'listItem', item => {
-                    visit(item, 'paragraph', p => {
-                      visit(p, 'text', text => {
-                        const raw = (text.value as string)
-                          .split('(')[1]
-                          .replace(')', '')
+    const section = new Section('traceability')
 
-                        const title = (text.value as string).split(' (')[0]
-
-                        const parsed = Issue.parsePartOf(
-                          raw,
-                          this.owner,
-                          this.repo
-                        )
-
-                        if (parsed) {
-                          const {issue_number, owner, repo} = parsed
-
-                          subtasks.set(raw, {
-                            id: issue_number.toString(),
-                            title,
-                            removed: false,
-                            closed: !!item.checked,
-                            owner,
-                            repo
-                          })
-                        }
-                      })
-                    })
-                  })
-                }
+    visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
+      switch (node.type) {
+        case 'heading':
+          // no information
+          if (section.isStartMarker(node)) {
+            section.enter(position, node.depth as number)
+          } else {
+            // inside section
+            if (section.isInside()) {
+              // end
+              if (section.isEndMarker(node.depth as number)) {
+                section.leave(position)
+              }
             }
-          })
-        }
-      })
-      .processSync(this.props.body)
+          }
+          break
+        case 'list':
+          if (section.isInside()) {
+            visit(node, 'listItem', item => {
+              visit(item, 'paragraph', p => {
+                visit(p, 'text', text => {
+                  const raw = (text.value as string)
+                    .split('(')[1]
+                    .replace(')', '')
+
+                  const title = (text.value as string).split(' (')[0]
+
+                  const parsed = Issue.parsePartOf(raw, this.owner, this.repo)
+
+                  if (parsed) {
+                    const {issue_number, owner, repo} = parsed
+
+                    subtasks.set(raw, {
+                      id: issue_number.toString(),
+                      title,
+                      removed: false,
+                      closed: !!item.checked,
+                      owner,
+                      repo
+                    })
+                  }
+                })
+              })
+            })
+          }
+      }
+    })
 
     return subtasks
   }
