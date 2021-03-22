@@ -99,6 +99,41 @@ Feature: Issue instance
                   ## After
                   """
 
+        @issue-23
+        Scenario: Added duplicate cross reference subtask
+            Given event body
+                  """
+                  ## Traceability <!-- traceability -->
+                  <!-- Section created by CompliancePal. Do not edit -->
+
+                  ### Related issues
+
+                  - [x] Closed title (CompliancePal/cross-ref#1)
+                  """
+                  # - [ ] Open title (#2)
+              And existing cross reference subtask
+                  """
+                  {
+                    "id": "1",
+                    "title": "Closed title",
+                    "closed": true,
+                    "removed": false,
+                    "repo": "cross-ref",
+                    "owner": "CompliancePal"
+                  }
+                  """
+             When subtask added
+             Then issue body unchanged
+                  """
+                  ## Traceability <!-- traceability -->
+                  <!-- Section created by CompliancePal. Do not edit -->
+
+                  ### Related issues
+
+                  - [x] Closed title (CompliancePal/cross-ref#1)
+                  """
+                  # - [ ] Open title (#2)
+
         @issue-11
         Scenario: Changes added when the placeholder is at the end of document
             Given body

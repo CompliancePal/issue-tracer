@@ -243,10 +243,8 @@ class Issue extends Entity_1.Entity {
         this.partOf = this.detectsPartOf();
         this.subtasks = this.detectsSubIssues();
     }
-    static fromEventPayload(event) {
-        const owner = event.repository.owner.login;
-        const repo = event.repository.name;
-        return new Issue(event.issue, owner, repo);
+    static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
+        return new Issue(issue, owner, repo);
     }
     static fromApiPayload(payload, owner, repo) {
         return new Issue(payload, owner, repo);
@@ -303,8 +301,11 @@ class Issue extends Entity_1.Entity {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
     addSubtask(subtask) {
-        // FIXME: add cross reference
-        const id = subtask.id.startsWith('#') ? subtask.id : `#${subtask.id}`;
+        const id = this.isCrossReference(subtask)
+            ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
+            : subtask.id.startsWith('#')
+                ? subtask.id
+                : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
         this.updateBody();
     }
