@@ -242,10 +242,10 @@ export class BodyIssueRels implements RelsRepo<Issue> {
 
                     issue.subtasks.set(
                       raw,
+                      //TODO: find a better way to create subtasks
                       Subtask.create({
                         id: issue_number.toString(),
                         title,
-                        removed: false,
                         closed: !!item.checked,
                         owner,
                         repo,

@@ -67,7 +67,6 @@ const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* (
                 id: issue.number.toString(),
                 title: issue.title,
                 closed: issue.closed,
-                removed: false,
                 owner: issue.owner,
                 repo: issue.repo,
                 crossReference: relatedIssue.isCrossReference(issue)
@@ -280,6 +279,7 @@ class Issue extends Entity_1.Entity {
     isCrossReference(issue) {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
+    //TODO: investigate how to create subtask also from issue
     addSubtask(subtask) {
         const id = this.isCrossReference(subtask)
             ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
@@ -797,10 +797,11 @@ class BodyIssueRels {
                                     const parsed = BodyIssueRels.parsePartOf(raw, issue.owner, issue.repo);
                                     if (parsed) {
                                         const { issue_number, owner, repo } = parsed;
-                                        issue.subtasks.set(raw, Subtask_1.Subtask.create({
+                                        issue.subtasks.set(raw, 
+                                        //TODO: find a better way to create subtasks
+                                        Subtask_1.Subtask.create({
                                             id: issue_number.toString(),
                                             title,
-                                            removed: false,
                                             closed: !!item.checked,
                                             owner,
                                             repo,

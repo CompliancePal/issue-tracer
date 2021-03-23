@@ -32,7 +32,6 @@ defineFeature(instance, test => {
         issue.subtasks.get('#1')?.equals({
           closed: true,
           id: '1',
-          removed: false,
           title: 'Closed title',
           owner: 'CompliancePal',
           repo: 'issue-tracer',
@@ -43,7 +42,6 @@ defineFeature(instance, test => {
         issue.subtasks.get('#2')?.equals({
           closed: false,
           id: '2',
-          removed: false,
           title: 'Open title',
           owner: 'CompliancePal',
           repo: 'issue-tracer',

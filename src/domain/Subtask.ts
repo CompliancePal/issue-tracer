@@ -5,7 +5,7 @@ export interface SubtaskProps {
   id: string
   title: string
   closed: boolean
-  removed: boolean
+  // removed: boolean
   repo: string
   owner: string
   crossReference: boolean

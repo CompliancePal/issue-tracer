@@ -42,7 +42,6 @@ export const issuesHandler = async (ghToken: string): Promise<void> => {
           id: issue.number.toString(),
           title: issue.title,
           closed: issue.closed,
-          removed: false,
           owner: issue.owner,
           repo: issue.repo,
           crossReference: relatedIssue.isCrossReference(issue)

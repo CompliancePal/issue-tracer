@@ -109,6 +109,7 @@ export class Issue extends Entity<GitHubIssue> {
     return this.owner !== issue.owner || this.repo !== issue.repo
   }
 
+  //TODO: investigate how to create subtask also from issue
   addSubtask(subtask: Subtask): void {
     const id = this.isCrossReference(subtask)
       ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
