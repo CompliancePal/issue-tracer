@@ -3,9 +3,8 @@ import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
 import {Reference, Issue} from './Issue'
 import {scenarioNameTemplate} from '../utils/test'
-import {Subtask} from './Subtask'
 
-const instance = loadFeature('./features/Issue.instance.feature', {
+const instance = loadFeature('./features/Issue.feature', {
   scenarioNameTemplate
 })
 
@@ -48,33 +47,6 @@ defineFeature(instance, test => {
           crossReference: false
         })
       ).toBeTruthy()
-
-      // expect(issue.subtasks).toEqual(
-      //   new Map([
-      //     [
-      //       '#1',
-      //       {
-      //         closed: true,
-      //         id: '1',
-      //         removed: false,
-      //         title: 'Closed title',
-      //         owner: 'CompliancePal',
-      //         repo: 'issue-tracer'
-      //       }
-      //     ],
-      //     [
-      //       '#2',
-      //       {
-      //         closed: false,
-      //         id: '2',
-      //         removed: false,
-      //         title: 'Open title',
-      //         owner: 'CompliancePal',
-      //         repo: 'issue-tracer'
-      //       }
-      //     ]
-      //   ])
-      // )
     })
   })
 
@@ -112,158 +84,161 @@ defineFeature(instance, test => {
     })
   })
 
-  test('Changes preserves content outside placeholder', ({
-    given,
-    and,
-    when,
-    then
-  }) => {
-    let subtask: Subtask
+  describe('addSubtask', () => {
+    test('Changes preserves content outside placeholder', ({
+      given,
+      and,
+      when,
+      then
+    }) => {
+      let subtask: Issue
 
-    given('event body', docString => {
-      event = {
-        ...openEventPayload
-      } as IssuesOpenedEvent
-      event.issue.body = docString
-    })
+      given('event body', docString => {
+        event = {
+          ...openEventPayload
+        } as IssuesOpenedEvent
+        event.issue.body = docString
+      })
 
-    and('new subtask', docString => {
-      subtask = Subtask.create(JSON.parse(docString))
-    })
+      and('new subtask', docString => {
+        subtask = Issue.fromReference(JSON.parse(docString))
+      })
 
-    when('subtask added', () => {
-      issue = Issue.fromEventPayload(event)
-      issue.addSubtask(subtask)
-    })
+      when('subtask added', () => {
+        issue = Issue.fromEventPayload(event)
+        issue.addSubtask(subtask)
+      })
 
-    then('content outside placeholder is not affected', docString => {
-      expect(issue.body).toEqual(docString)
-    })
-  })
-
-  test('Added duplicate cross reference subtask', ({
-    given,
-    and,
-    when,
-    then
-  }) => {
-    let subtask: Subtask
-
-    given('event body', docString => {
-      event = {
-        ...openEventPayload
-      } as IssuesOpenedEvent
-      event.issue.body = docString
-    })
-
-    and('existing cross reference subtask', docString => {
-      subtask = Subtask.create({
-        ...JSON.parse(docString),
-        crossReference: true
+      then('content outside placeholder is not affected', docString => {
+        expect(issue.body).toEqual(docString)
       })
     })
 
-    when('subtask added', () => {
-      issue = Issue.fromEventPayload(event)
-      issue.addSubtask(subtask)
+    test('Added duplicate cross reference subtask', ({
+      given,
+      and,
+      when,
+      then
+    }) => {
+      let subtask: Issue
+
+      given('event body', docString => {
+        event = {
+          ...openEventPayload
+        } as IssuesOpenedEvent
+        event.issue.body = docString
+      })
+
+      and('existing cross reference subtask', docString => {
+        subtask = Issue.fromReference({
+          ...JSON.parse(docString)
+        })
+      })
+
+      when('subtask added', () => {
+        issue = Issue.fromEventPayload(event)
+        issue.addSubtask(subtask)
+      })
+
+      then('issue body unchanged', docString => {
+        expect(issue.body).toEqual(docString)
+      })
     })
 
-    then('issue body unchanged', docString => {
-      expect(issue.body).toEqual(docString)
+    test('Changes added when the placeholder is at the end of document', ({
+      given,
+      and,
+      when,
+      then
+    }) => {
+      let subtask: Issue
+
+      given('body', docString => {
+        event = {
+          ...openEventPayload
+        } as IssuesOpenedEvent
+        event.issue.body = docString
+      })
+
+      and('subtask', docString => {
+        subtask = Issue.fromReference(JSON.parse(docString))
+      })
+
+      when('added', () => {
+        issue = Issue.fromEventPayload(event)
+        issue.addSubtask(subtask)
+      })
+
+      then('body updated', docString => {
+        expect(issue.body).toEqual(docString)
+      })
+    })
+
+    test('Changes not added on issue without placeholder', ({
+      given,
+      and,
+      when,
+      then
+    }) => {
+      let subtask: Issue
+
+      given('Issue body without placeholder', docString => {
+        event = {
+          ...openEventPayload
+        } as IssuesOpenedEvent
+        event.issue.body = docString
+      })
+
+      and('new subtask', docString => {
+        subtask = Issue.fromReference(JSON.parse(docString))
+      })
+
+      when('subtask added', () => {
+        issue = Issue.fromEventPayload(event)
+        issue.addSubtask(subtask)
+      })
+
+      then('body not updated', docString => {
+        expect(issue.body).toEqual(docString)
+      })
     })
   })
 
-  test('Changes added when the placeholder is at the end of document', ({
-    given,
-    and,
-    when,
-    then
-  }) => {
-    let subtask: Subtask
+  describe('partOf', () => {
+    test('partOf with local reference', ({given, when, then}) => {
+      given('Issue body', docString => {
+        event = {...openEventPayload} as IssuesOpenedEvent
+        event.issue.body = docString
+      })
 
-    given('body', docString => {
-      event = {
-        ...openEventPayload
-      } as IssuesOpenedEvent
-      event.issue.body = docString
+      when('event triggered', () => {
+        issue = Issue.fromEventPayload(event)
+      })
+
+      then('issue identifies the reference', () => {
+        expect(issue.partOf).toEqual({
+          owner: 'CompliancePal',
+          repo: 'issue-tracer',
+          issue_number: 123
+        } as Reference)
+        expect(issue.hasParent()).toBeTruthy()
+      })
     })
 
-    and('subtask', docString => {
-      subtask = Subtask.create(JSON.parse(docString))
-    })
+    test('partOf with remote reference', ({given, when, then}) => {
+      given('Issue body', docString => {
+        event = {...openEventPayload} as IssuesOpenedEvent
+        event.issue.body = docString
+      })
 
-    when('added', () => {
-      issue = Issue.fromEventPayload(event)
-      issue.addSubtask(subtask)
-    })
+      when('event triggered', () => {
+        issue = Issue.fromEventPayload(event)
+      })
 
-    then('body updated', docString => {
-      expect(issue.body).toEqual(docString)
-    })
-  })
-
-  test('Changes not added on issue without placeholder', ({
-    given,
-    and,
-    when,
-    then
-  }) => {
-    let subtask: Subtask
-
-    given('Issue body without placeholder', docString => {
-      event = {
-        ...openEventPayload
-      } as IssuesOpenedEvent
-      event.issue.body = docString
-    })
-
-    and('new subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
-    })
-
-    when('subtask added', () => {
-      issue = Issue.fromEventPayload(event)
-      issue.addSubtask(subtask)
-    })
-
-    then('body not updated', docString => {
-      expect(issue.body).toEqual(docString)
-    })
-  })
-
-  test('partOf with local reference', ({given, when, then}) => {
-    given('Issue body', docString => {
-      event = {...openEventPayload} as IssuesOpenedEvent
-      event.issue.body = docString
-    })
-
-    when('event triggered', () => {
-      issue = Issue.fromEventPayload(event)
-    })
-
-    then('issue identifies the reference', () => {
-      expect(issue.partOf).toEqual({
-        owner: 'CompliancePal',
-        repo: 'issue-tracer',
-        issue_number: 123
-      } as Reference)
-      expect(issue.hasParent()).toBeTruthy()
-    })
-  })
-
-  test('partOf with remote reference', ({given, when, then}) => {
-    given('Issue body', docString => {
-      event = {...openEventPayload} as IssuesOpenedEvent
-      event.issue.body = docString
-    })
-
-    when('event triggered', () => {
-      issue = Issue.fromEventPayload(event)
-    })
-
-    then('issue identifies the reference', () => {
-      expect(issue.partOf).toBeTruthy()
-      expect(issue.hasParent()).toBeTruthy()
+      then('issue identifies the reference', () => {
+        expect(issue.partOf).toBeTruthy()
+        expect(issue.hasParent()).toBeTruthy()
+      })
     })
   })
 })

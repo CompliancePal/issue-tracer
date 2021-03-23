@@ -47,6 +47,7 @@ Feature: Issue instance
 
         @issue-7
         @issue-15
+        @issue-27
         Scenario: Changes preserves content outside placeholder
             Given event body
                   """
@@ -72,7 +73,7 @@ Feature: Issue instance
                   {
                     "id": "3",
                     "title": "Added",
-                    "closed": false,
+                    "state": "open",
                     "removed": false,
                     "repo": "issue-tracer",
                     "owner": "CompliancePal"
@@ -101,6 +102,7 @@ Feature: Issue instance
                   """
 
         @issue-23
+        @issue-27
         Scenario: Added duplicate cross reference subtask
             Given event body
                   """
@@ -110,14 +112,14 @@ Feature: Issue instance
                   ### Related issues
 
                   - [x] Closed title (CompliancePal/cross-ref#1)
+                  - [ ] Open title (#2)
                   """
-                  # - [ ] Open title (#2)
               And existing cross reference subtask
                   """
                   {
                     "id": "1",
                     "title": "Closed title",
-                    "closed": true,
+                    "state": "closed",
                     "removed": false,
                     "repo": "cross-ref",
                     "owner": "CompliancePal"
@@ -132,10 +134,11 @@ Feature: Issue instance
                   ### Related issues
 
                   - [x] Closed title (CompliancePal/cross-ref#1)
+                  - [ ] Open title (#2)
                   """
-                  # - [ ] Open title (#2)
 
         @issue-11
+        @issue-27
         Scenario: Changes added when the placeholder is at the end of document
             Given body
                   """
@@ -150,7 +153,7 @@ Feature: Issue instance
                   {
                     "id": "3",
                     "title": "Added",
-                    "closed": false,
+                    "state": "open",
                     "removed": false,
                     "repo": "issue-tracer",
                     "owner": "CompliancePal"
@@ -172,6 +175,7 @@ Feature: Issue instance
                   """
 
         @issue-9
+        @issue-27
         Scenario: Changes not added on issue without placeholder
             Given Issue body without placeholder
                   """
@@ -182,7 +186,7 @@ Feature: Issue instance
                   {
                     "id": "3",
                     "title": "Added",
-                    "closed": false,
+                    "state": "open",
                     "removed": false,
                     "repo": "issue-tracer",
                     "owner": "CompliancePal"

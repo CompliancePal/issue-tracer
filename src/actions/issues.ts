@@ -2,7 +2,6 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {Issue} from '../domain/Issue'
-import {Subtask} from '../domain/Subtask'
 import {IssuesRepo} from '../repo/Issues'
 
 export const issuesHandler = async (ghToken: string): Promise<void> => {
@@ -37,19 +36,10 @@ export const issuesHandler = async (ghToken: string): Promise<void> => {
         `Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`
       )
 
-      relatedIssue.addSubtask(
-        Subtask.create({
-          id: issue.number.toString(),
-          title: issue.title,
-          closed: issue.closed,
-          owner: issue.owner,
-          repo: issue.repo,
-          crossReference: relatedIssue.isCrossReference(issue)
-        })
-      )
+      relatedIssue.addSubtask(issue)
 
       await relatedIssue.save(repo)
-      // await repo.save(relatedIssue)
+
       core.info(`Related issue ${relatedIssue.number} updated sucessfuly`)
 
       core.setOutput('partOf', issue.partOf)

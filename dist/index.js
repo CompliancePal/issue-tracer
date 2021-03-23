@@ -40,7 +40,6 @@ exports.issuesHandler = void 0;
 const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
-const Subtask_1 = __webpack_require__(3581);
 const Issues_1 = __webpack_require__(2724);
 const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* () {
     let issue, repo, relatedIssue;
@@ -63,16 +62,8 @@ const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* (
             }
             core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
             core.info(`Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`);
-            relatedIssue.addSubtask(Subtask_1.Subtask.create({
-                id: issue.number.toString(),
-                title: issue.title,
-                closed: issue.closed,
-                owner: issue.owner,
-                repo: issue.repo,
-                crossReference: relatedIssue.isCrossReference(issue)
-            }));
+            relatedIssue.addSubtask(issue);
             yield relatedIssue.save(repo);
-            // await repo.save(relatedIssue)
             core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);
             core.setOutput('partOf', issue.partOf);
             break;
@@ -219,6 +210,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Issue = void 0;
 const Entity_1 = __webpack_require__(6217);
 const BodyIssueRels_1 = __webpack_require__(5710);
+const Subtask_1 = __webpack_require__(3581);
 class Issue extends Entity_1.Entity {
     constructor(issue, owner, repo) {
         super(issue);
@@ -238,6 +230,19 @@ class Issue extends Entity_1.Entity {
     static fromApiPayload(payload, owner, repo) {
         const result = new Issue(payload, owner, repo);
         return result;
+    }
+    /**
+     * Creates an issue from a reference extracted from the issue body or from another backend
+     */
+    static fromReference({ id, owner, repo, title, state }) {
+        return new Issue({
+            number: parseInt(id),
+            id: parseInt(id),
+            state,
+            body: '',
+            labels: [],
+            title
+        }, owner, repo);
     }
     get body() {
         return this.props.body;
@@ -279,15 +284,36 @@ class Issue extends Entity_1.Entity {
     isCrossReference(issue) {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
-    //TODO: investigate how to create subtask also from issue
-    addSubtask(subtask) {
-        const id = this.isCrossReference(subtask)
-            ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
-            : subtask.id.startsWith('#')
-                ? subtask.id
-                : `#${subtask.id}`;
-        this.subtasks.set(id, subtask);
-        this.updateRelationships();
+    /**
+     *
+     * @param issue issue to be added as subtask
+     * @param updateBody triggers issue body update
+     */
+    addSubtask(issue, updateBody = true) {
+        const subtask = Subtask_1.Subtask.create({
+            id: issue.number.toString(),
+            title: issue.title,
+            closed: issue.closed,
+            owner: issue.owner,
+            repo: issue.repo,
+            crossReference: this.isCrossReference(issue)
+        });
+        this.addSubtaskInternal(subtask);
+        if (updateBody) {
+            this.updateRelationships();
+        }
+    }
+    //TODO: investigate how to create a subtask smarter for internal use
+    addSubtaskInternal(subtask) {
+        // const id = this.isCrossReference(subtask)
+        //   ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
+        //   : subtask.id.startsWith('#')
+        //   ? subtask.id
+        //   : `#${subtask.id}`
+        // core.debug(`${subtask.toString()} - ${subtask.id}`)
+        // core.debug(subtask.id)
+        // if (!(subtask instanceof Subtask)) throw new Error()
+        this.subtasks.set(subtask.toString(), subtask);
     }
     setResolvedBy(pullRequest) {
         this.resolvedBy = pullRequest;
@@ -635,10 +661,10 @@ const remark_gfm_1 = __importDefault(__webpack_require__(5772));
 const remark_stringify_1 = __importDefault(__webpack_require__(7114));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const yaml_1 = __importDefault(__webpack_require__(3552));
+const Issue_1 = __webpack_require__(2422);
 const Section_1 = __webpack_require__(7980);
 const SectionExporter_1 = __webpack_require__(1120);
 const unified_2 = __webpack_require__(4079);
-const Subtask_1 = __webpack_require__(3581);
 class BodyIssueRels {
     static parsePartOf(raw, owner, repo) {
         const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
@@ -797,20 +823,14 @@ class BodyIssueRels {
                                     const parsed = BodyIssueRels.parsePartOf(raw, issue.owner, issue.repo);
                                     if (parsed) {
                                         const { issue_number, owner, repo } = parsed;
-                                        issue.subtasks.set(raw, 
-                                        //TODO: find a better way to create subtasks
-                                        Subtask_1.Subtask.create({
+                                        const subtask = Issue_1.Issue.fromReference({
                                             id: issue_number.toString(),
-                                            title,
-                                            closed: !!item.checked,
                                             owner,
                                             repo,
-                                            crossReference: BodyIssueRels.isCrossReference({
-                                                owner,
-                                                repo,
-                                                issue_number
-                                            }, issue)
-                                        }));
+                                            state: item.checked ? 'closed' : 'open',
+                                            title
+                                        });
+                                        issue.addSubtask(subtask, false);
                                     }
                                 });
                             });
