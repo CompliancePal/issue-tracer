@@ -2,18 +2,9 @@ import {
   IssuesOpenedEvent,
   Issue as GitHubIssue
 } from '@octokit/webhooks-definitions/schema'
-import unified from 'unified'
-import markdown from 'remark-parse'
-import stringify from 'remark-stringify'
-import gfm from 'remark-gfm'
-import visit from 'unist-util-visit'
-import {Parent} from 'unist'
 import {Entity} from './Entity'
-import {Section} from './Section'
-import {styleMarkdownOutput} from '../plugins/unified'
 import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
-import {SectionExporter} from './exporters/SectionExporter'
 import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
 
 export interface IPartOf {
@@ -30,14 +21,6 @@ export interface Subtask {
   repo: string
   owner: string
   toString(): string
-}
-
-const subtaskToString = (
-  subtask: Subtask,
-  isCrossReference: boolean
-): string => {
-  const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : ''
-  return `${reference}#${subtask.id}`
 }
 
 export class Issue extends Entity<GitHubIssue> {
@@ -68,6 +51,7 @@ export class Issue extends Entity<GitHubIssue> {
   partOf?: IPartOf
   subtasks: Map<string, Subtask>
   resolvedBy?: PullRequest
+  relsBackend: RelsRepo<Issue>
 
   protected constructor(issue: GitHubIssue, owner: string, repo: string) {
     super(issue)
@@ -79,7 +63,8 @@ export class Issue extends Entity<GitHubIssue> {
     this.subtasks = new Map<string, Subtask>()
 
     const rels = new BodyIssueRels()
-    this.detectsRels(rels)
+    this.relsBackend = rels
+    this.detectsRels()
   }
 
   get body(): string {
@@ -145,102 +130,19 @@ export class Issue extends Entity<GitHubIssue> {
     this.updateBody()
   }
 
-  addResolvedBy(pullRequest: PullRequest): void {
+  setResolvedBy(pullRequest: PullRequest): Issue {
     this.resolvedBy = pullRequest
 
     this.updateBody()
+
+    return this
   }
 
   protected updateBody(): void {
-    const stringifier = unified()
-      .use(markdown)
-      .use(gfm)
-      .use(styleMarkdownOutput, {
-        comment: SectionExporter.COMMENT
-      })
-      .use(() => {
-        return tree => {
-          const section = new Section('traceability')
-          const exporter = new SectionExporter(2)
-
-          const sectionHeading = exporter.heading()
-
-          const resolvedBySection = exporter.resolvedBy(this.resolvedBy)
-
-          const testCasesSection =
-            this.resolvedBy && exporter.testCases(this.resolvedBy)
-
-          const subtasksSection = `### Related issues\n\n${Array.from(
-            this.subtasks.values()
-          )
-            .map(
-              _subtask =>
-                `* [${_subtask.closed ? 'x' : ' '}] ${
-                  _subtask.title
-                } (${subtaskToString(
-                  _subtask,
-                  this.isCrossReference(_subtask)
-                )})`
-            )
-            .join('\n')}\n`
-
-          const processor = unified().use(markdown).use(gfm)
-
-          visit(tree, 'heading', (node: Parent, position: number) => {
-            if (section.isStartMarker(node)) {
-              section.enter(position, node.depth as number)
-            } else {
-              // inside section
-              if (section.isInside()) {
-                // end
-                if (section.isEndMarker(node.depth as number)) {
-                  section.leave(position)
-                }
-              }
-            }
-          })
-
-          if (section.isInside()) {
-            section.leave((tree as Parent).children.length)
-          }
-
-          if (!section.found) return tree
-
-          const before = (tree as Parent).children.filter(
-            (node, index) => index < (section.start || 0)
-          )
-
-          const after = (tree as Parent).children.filter(
-            (node, index) =>
-              index >= (section.end || (tree as Parent).children.length)
-          )
-
-          const sectionTree = processor.parse(
-            [
-              sectionHeading,
-              resolvedBySection,
-              testCasesSection,
-              subtasksSection
-            ]
-              .filter(part => part !== null)
-              .join('\n')
-          ) as Parent
-
-          const result = processor.parse('') as Parent
-
-          result.children = before.concat(sectionTree.children).concat(after)
-
-          return result
-        }
-      })
-      .use(stringify)
-
-    const sectionBody = stringifier.processSync(this.body)
-
-    this.body = (sectionBody.contents as string).trim()
+    this.relsBackend.save(this)
   }
 
-  protected detectsRels(rels: RelsRepo<Issue>): void {
-    rels.load(this)
+  protected detectsRels(): void {
+    this.relsBackend.load(this)
   }
 }

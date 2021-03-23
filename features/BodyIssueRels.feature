@@ -1,4 +1,4 @@
-Feature: Issue class properties
+Feature: BodyIssueRels
 
         @issue-25
         Scenario: parsePartOf with local reference

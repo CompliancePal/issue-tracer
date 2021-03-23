@@ -170,7 +170,7 @@ const pullRequestHandler = (ghToken) => __awaiter(void 0, void 0, void 0, functi
             //   name: 'repo_name',
             //   owner: 'owner'
             // })
-            issue.addResolvedBy(pullRequest);
+            issue.setResolvedBy(pullRequest);
             issue.save(repo);
             core.info(`Resolved issue ${issue.number} updated sucessfuly`);
             break;
@@ -214,25 +214,10 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Issue = void 0;
-const unified_1 = __importDefault(__webpack_require__(5075));
-const remark_parse_1 = __importDefault(__webpack_require__(4859));
-const remark_stringify_1 = __importDefault(__webpack_require__(7114));
-const remark_gfm_1 = __importDefault(__webpack_require__(5772));
-const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
-const Section_1 = __webpack_require__(6522);
-const unified_2 = __webpack_require__(4079);
-const SectionExporter_1 = __webpack_require__(4531);
 const BodyIssueRels_1 = __webpack_require__(5710);
-const subtaskToString = (subtask, isCrossReference) => {
-    const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
-    return `${reference}#${subtask.id}`;
-};
 class Issue extends Entity_1.Entity {
     constructor(issue, owner, repo) {
         super(issue);
@@ -242,7 +227,8 @@ class Issue extends Entity_1.Entity {
         // this.partOf = this.detectsPartOf()
         this.subtasks = new Map();
         const rels = new BodyIssueRels_1.BodyIssueRels();
-        this.detectsRels(rels);
+        this.relsBackend = rels;
+        this.detectsRels();
     }
     static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
         const result = new Issue(issue, owner, repo);
@@ -301,68 +287,16 @@ class Issue extends Entity_1.Entity {
         this.subtasks.set(id, subtask);
         this.updateBody();
     }
-    addResolvedBy(pullRequest) {
+    setResolvedBy(pullRequest) {
         this.resolvedBy = pullRequest;
         this.updateBody();
+        return this;
     }
     updateBody() {
-        const stringifier = unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_gfm_1.default)
-            .use(unified_2.styleMarkdownOutput, {
-            comment: SectionExporter_1.SectionExporter.COMMENT
-        })
-            .use(() => {
-            return tree => {
-                const section = new Section_1.Section('traceability');
-                const exporter = new SectionExporter_1.SectionExporter(2);
-                const sectionHeading = exporter.heading();
-                const resolvedBySection = exporter.resolvedBy(this.resolvedBy);
-                const testCasesSection = this.resolvedBy && exporter.testCases(this.resolvedBy);
-                const subtasksSection = `### Related issues\n\n${Array.from(this.subtasks.values())
-                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
-                    .join('\n')}\n`;
-                const processor = unified_1.default().use(remark_parse_1.default).use(remark_gfm_1.default);
-                unist_util_visit_1.default(tree, 'heading', (node, position) => {
-                    if (section.isStartMarker(node)) {
-                        section.enter(position, node.depth);
-                    }
-                    else {
-                        // inside section
-                        if (section.isInside()) {
-                            // end
-                            if (section.isEndMarker(node.depth)) {
-                                section.leave(position);
-                            }
-                        }
-                    }
-                });
-                if (section.isInside()) {
-                    section.leave(tree.children.length);
-                }
-                if (!section.found)
-                    return tree;
-                const before = tree.children.filter((node, index) => index < (section.start || 0));
-                const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
-                const sectionTree = processor.parse([
-                    sectionHeading,
-                    resolvedBySection,
-                    testCasesSection,
-                    subtasksSection
-                ]
-                    .filter(part => part !== null)
-                    .join('\n'));
-                const result = processor.parse('');
-                result.children = before.concat(sectionTree.children).concat(after);
-                return result;
-            };
-        })
-            .use(remark_stringify_1.default);
-        const sectionBody = stringifier.processSync(this.body);
-        this.body = sectionBody.contents.trim();
+        this.relsBackend.save(this);
     }
-    detectsRels(rels) {
-        rels.load(this);
+    detectsRels() {
+        this.relsBackend.load(this);
     }
 }
 exports.Issue = Issue;
@@ -578,70 +512,6 @@ exports.Section = Section;
 
 /***/ }),
 
-/***/ 4531:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SectionExporter = void 0;
-class SectionExporter {
-    constructor(depth) {
-        this.depth = depth;
-    }
-    headingString(increment) {
-        return '#'.repeat(this.depth + increment);
-    }
-    heading() {
-        return `${this.headingString(0)} Traceability <!-- traceability -->\n${SectionExporter.COMMENT}\n`;
-    }
-    resolvedBy(pullRequest) {
-        return pullRequest
-            ? `${this.headingString(1)} Resolved by\n\nChange request #${pullRequest.number} will close this issue.`
-            : null;
-    }
-    testCases({ testCases }) {
-        const details = testCases
-            .map((testCase) => {
-            return this.testCaseDetails(testCase);
-        })
-            .join('\n');
-        return testCases.length > 0
-            ? `${this.headingString(1)} Test cases\n\n${details}\n`
-            : null;
-    }
-    testCaseDetails(testCase) {
-        return `<details>
-<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
-\n
-\`\`\`gherkin
-Feature: ${testCase.feature}
-\n
-  Scenario: ${testCase.title}
-${testCase.steps
-            .map(step => {
-            // process.stdout.write(JSON.stringify(step))
-            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
-        })
-            .join('\n')}
-\`\`\`
-\n
-</details>
-`;
-    }
-    leftPad(text, length) {
-        return text.padStart(length);
-    }
-    capitalize(input) {
-        return input[0].toUpperCase() + input.substring(1);
-    }
-}
-exports.SectionExporter = SectionExporter;
-SectionExporter.COMMENT = '<!-- Section created by CompliancePal. Do not edit -->';
-
-
-/***/ }),
-
 /***/ 3109:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -764,25 +634,13 @@ const unified_1 = __importDefault(__webpack_require__(5075));
 const remark_parse_1 = __importDefault(__webpack_require__(4859));
 const remark_frontmatter_1 = __importDefault(__webpack_require__(762));
 const remark_gfm_1 = __importDefault(__webpack_require__(5772));
+const remark_stringify_1 = __importDefault(__webpack_require__(7114));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const yaml_1 = __importDefault(__webpack_require__(3552));
 const Section_1 = __webpack_require__(6522);
+const SectionExporter_1 = __webpack_require__(1120);
+const unified_2 = __webpack_require__(4079);
 class BodyIssueRels {
-    constructor() {
-        this.processor = unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_gfm_1.default)
-            .use(remark_frontmatter_1.default, [
-            {
-                type: 'yaml',
-                marker: {
-                    open: '-',
-                    close: '-'
-                },
-                anywhere: true
-            }
-        ]);
-    }
     static parsePartOf(raw, owner, repo) {
         const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
         const res = raw.match(re);
@@ -794,21 +652,115 @@ class BodyIssueRels {
             }
             : undefined;
     }
+    get processor() {
+        return (unified_1.default()
+            .use(remark_parse_1.default)
+            .use(remark_gfm_1.default)
+            .use(remark_frontmatter_1.default, [
+            {
+                type: 'yaml',
+                marker: {
+                    open: '-',
+                    close: '-'
+                },
+                anywhere: true
+            }
+        ])
+            .use(unified_2.styleMarkdownOutput, {
+            comment: SectionExporter_1.SectionExporter.COMMENT
+        })
+            //TODO: investigate why we need the previous plugin
+            .use(remark_stringify_1.default
+        // , {
+        // extensions: [
+        //   {
+        //     bullet: '-',
+        //     listItemIndent: 'one',
+        //     rule: '-',
+        //     join: [
+        //       (first: Node, second: Node) => {
+        //         // do not add space between the heading and the comment
+        //         if (
+        //           first.type === 'heading' &&
+        //           second.type === 'html' &&
+        //           second.value === SectionExporter.COMMENT
+        //         ) {
+        //           core.debug('handled comment')
+        //           // join signature does not allow to return number
+        //           return (0 as unknown) as boolean
+        //         }
+        //         // do not add space in frontmatter
+        //         if (
+        //           first.type === 'thematicBreak' &&
+        //           second.type === 'paragraph'
+        //         ) {
+        //           // join signature does not allow to return number
+        //           return (0 as unknown) as boolean
+        //         }
+        //         return true
+        //       }
+        //     ]
+        //   }
+        // ]
+        // }
+        ));
+    }
     load(issue) {
         const tree = this.processor.parse(issue.body);
         this.findsPartOf(issue, tree);
         this.findsSubtasks(issue, tree);
     }
     save(issue) {
-        issue;
+        const stringifier = this.processor.use(() => {
+            return tree => {
+                const section = new Section_1.Section('traceability');
+                const exporter = new SectionExporter_1.SectionExporter(2);
+                const sectionHeading = exporter.heading();
+                const resolvedBySection = exporter.resolvedBy(issue.resolvedBy);
+                const testCasesSection = issue.resolvedBy && exporter.testCases(issue.resolvedBy);
+                const subtasksSection = `### Related issues\n\n${Array.from(issue.subtasks.values())
+                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, issue.isCrossReference(_subtask))})`)
+                    .join('\n')}\n`;
+                const processor = this.processor;
+                unist_util_visit_1.default(tree, 'heading', (node, position) => {
+                    if (section.isStartMarker(node)) {
+                        section.enter(position, node.depth);
+                    }
+                    else {
+                        // inside section
+                        if (section.isInside()) {
+                            // end
+                            if (section.isEndMarker(node.depth)) {
+                                section.leave(position);
+                            }
+                        }
+                    }
+                });
+                if (section.isInside()) {
+                    section.leave(tree.children.length);
+                }
+                if (!section.found)
+                    return tree;
+                const before = tree.children.filter((node, index) => index < (section.start || 0));
+                const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
+                const sectionTree = processor.parse([sectionHeading, resolvedBySection, testCasesSection, subtasksSection]
+                    .filter(part => part !== null)
+                    .join('\n'));
+                const result = processor.parse('');
+                result.children = before.concat(sectionTree.children).concat(after);
+                return result;
+            };
+        });
+        const sectionBody = stringifier.processSync(issue.body);
+        issue.body = sectionBody.contents.trim();
     }
     findsPartOf(issue, tree) {
         unist_util_visit_1.default(tree, 'yaml', node => {
             // core.debug(JSON.stringify(node))
             const patched = node.value.replace(/partOf: (#[0-9]*)/, 'partOf: "$1"');
-            node.data = yaml_1.default.parse(patched);
-            if (node.data && node.data.partOf) {
-                issue.partOf = BodyIssueRels.parsePartOf(node.data.partOf, issue.owner, issue.repo);
+            const data = yaml_1.default.parse(patched);
+            if (data && data.partOf) {
+                issue.partOf = BodyIssueRels.parsePartOf(data.partOf, issue.owner, issue.repo);
             }
         });
     }
@@ -861,6 +813,10 @@ class BodyIssueRels {
     }
 }
 exports.BodyIssueRels = BodyIssueRels;
+const subtaskToString = (subtask, isCrossReference) => {
+    const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
+    return `${reference}#${subtask.id}`;
+};
 
 
 /***/ }),
@@ -935,6 +891,70 @@ class IssuesRepo {
     }
 }
 exports.IssuesRepo = IssuesRepo;
+
+
+/***/ }),
+
+/***/ 1120:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SectionExporter = void 0;
+class SectionExporter {
+    constructor(depth) {
+        this.depth = depth;
+    }
+    headingString(increment) {
+        return '#'.repeat(this.depth + increment);
+    }
+    heading() {
+        return `${this.headingString(0)} Traceability <!-- traceability -->\n${SectionExporter.COMMENT}\n`;
+    }
+    resolvedBy(pullRequest) {
+        return pullRequest
+            ? `${this.headingString(1)} Resolved by\n\nChange request #${pullRequest.number} will close this issue.`
+            : null;
+    }
+    testCases({ testCases }) {
+        const details = testCases
+            .map((testCase) => {
+            return this.testCaseDetails(testCase);
+        })
+            .join('\n');
+        return testCases.length > 0
+            ? `${this.headingString(1)} Test cases\n\n${details}\n`
+            : null;
+    }
+    testCaseDetails(testCase) {
+        return `<details>
+<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
+\n
+\`\`\`gherkin
+Feature: ${testCase.feature}
+\n
+  Scenario: ${testCase.title}
+${testCase.steps
+            .map(step => {
+            // process.stdout.write(JSON.stringify(step))
+            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
+        })
+            .join('\n')}
+\`\`\`
+\n
+</details>
+`;
+    }
+    leftPad(text, length) {
+        return text.padStart(length);
+    }
+    capitalize(input) {
+        return input[0].toUpperCase() + input.substring(1);
+    }
+}
+exports.SectionExporter = SectionExporter;
+SectionExporter.COMMENT = '<!-- Section created by CompliancePal. Do not edit -->';
 
 
 /***/ }),

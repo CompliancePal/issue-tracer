@@ -1,4 +1,4 @@
-import {PullRequest, TestCase} from '../PullRequest'
+import {PullRequest, TestCase} from '../../domain/PullRequest'
 
 export class SectionExporter {
   static COMMENT = '<!-- Section created by CompliancePal. Do not edit -->'

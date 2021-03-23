@@ -66,7 +66,7 @@ export const pullRequestHandler = async (ghToken: string): Promise<void> => {
       //   owner: 'owner'
       // })
 
-      issue.addResolvedBy(pullRequest)
+      issue.setResolvedBy(pullRequest)
 
       issue.save(repo)
 
