@@ -6,21 +6,12 @@ import {Entity} from './Entity'
 import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
 import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
+import {Subtask} from './Subtask'
 
 export interface Reference {
   owner: string
   repo: string
   issue_number: number
-}
-
-export interface Subtask {
-  id: string
-  title: string
-  closed: boolean
-  removed: boolean
-  repo: string
-  owner: string
-  toString(): string
 }
 
 export class Issue extends Entity<GitHubIssue> {

@@ -40,6 +40,7 @@ exports.issuesHandler = void 0;
 const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
+const Subtask_1 = __webpack_require__(3581);
 const Issues_1 = __webpack_require__(2724);
 const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* () {
     let issue, repo, relatedIssue;
@@ -62,14 +63,15 @@ const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* (
             }
             core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
             core.info(`Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`);
-            relatedIssue.addSubtask({
+            relatedIssue.addSubtask(Subtask_1.Subtask.create({
                 id: issue.number.toString(),
                 title: issue.title,
                 closed: issue.closed,
                 removed: false,
                 owner: issue.owner,
-                repo: issue.repo
-            });
+                repo: issue.repo,
+                crossReference: relatedIssue.isCrossReference(issue)
+            }));
             yield relatedIssue.save(repo);
             // await repo.save(relatedIssue)
             core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);
@@ -446,6 +448,68 @@ exports.PullRequest = PullRequest;
 
 /***/ }),
 
+/***/ 3581:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Subtask = void 0;
+const ValueObject_1 = __webpack_require__(209);
+class Subtask extends ValueObject_1.ValueObject {
+    static create(props) {
+        return new Subtask(Object.assign({}, props));
+    }
+    constructor(props) {
+        super(props);
+    }
+    get repo() {
+        return this.props.repo;
+    }
+    get owner() {
+        return this.props.owner;
+    }
+    get closed() {
+        return this.props.closed;
+    }
+    get id() {
+        return this.props.id;
+    }
+    get title() {
+        return this.props.title;
+    }
+    toString() {
+        const reference = this.props.crossReference
+            ? `${this.props.owner}/${this.props.repo}`
+            : '';
+        return `${reference}#${this.props.id}`;
+    }
+    equals(subtask) {
+        return Object.keys(subtask).every(key => this.props[key] === subtask[key]);
+    }
+}
+exports.Subtask = Subtask;
+
+
+/***/ }),
+
+/***/ 209:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ValueObject = void 0;
+class ValueObject {
+    constructor(props) {
+        this.props = Object.freeze(props);
+    }
+}
+exports.ValueObject = ValueObject;
+
+
+/***/ }),
+
 /***/ 3109:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -574,6 +638,7 @@ const yaml_1 = __importDefault(__webpack_require__(3552));
 const Section_1 = __webpack_require__(7980);
 const SectionExporter_1 = __webpack_require__(1120);
 const unified_2 = __webpack_require__(4079);
+const Subtask_1 = __webpack_require__(3581);
 class BodyIssueRels {
     static parsePartOf(raw, owner, repo) {
         const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
@@ -585,6 +650,9 @@ class BodyIssueRels {
                 issue_number: parseInt(res[4])
             }
             : undefined;
+    }
+    static isCrossReference(ref, issue) {
+        return issue.repo !== ref.repo || issue.owner !== ref.owner;
     }
     get processor() {
         return (unified_1.default()
@@ -653,7 +721,7 @@ class BodyIssueRels {
                 const resolvedBySection = exporter.resolvedBy(issue.resolvedBy);
                 const testCasesSection = issue.resolvedBy && exporter.testCases(issue.resolvedBy);
                 const subtasksSection = `### Related issues\n\n${Array.from(issue.subtasks.values())
-                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, issue.isCrossReference(_subtask))})`)
+                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${_subtask.toString()})`)
                     .join('\n')}\n`;
                 const processor = this.processor;
                 unist_util_visit_1.default(tree, 'heading', (node, position) => {
@@ -729,14 +797,19 @@ class BodyIssueRels {
                                     const parsed = BodyIssueRels.parsePartOf(raw, issue.owner, issue.repo);
                                     if (parsed) {
                                         const { issue_number, owner, repo } = parsed;
-                                        issue.subtasks.set(raw, {
+                                        issue.subtasks.set(raw, Subtask_1.Subtask.create({
                                             id: issue_number.toString(),
                                             title,
                                             removed: false,
                                             closed: !!item.checked,
                                             owner,
-                                            repo
-                                        });
+                                            repo,
+                                            crossReference: BodyIssueRels.isCrossReference({
+                                                owner,
+                                                repo,
+                                                issue_number
+                                            }, issue)
+                                        }));
                                     }
                                 });
                             });
@@ -747,10 +820,6 @@ class BodyIssueRels {
     }
 }
 exports.BodyIssueRels = BodyIssueRels;
-const subtaskToString = (subtask, isCrossReference) => {
-    const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
-    return `${reference}#${subtask.id}`;
-};
 
 
 /***/ }),

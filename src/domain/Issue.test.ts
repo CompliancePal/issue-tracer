@@ -1,8 +1,9 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
-import {Reference, Issue, Subtask} from './Issue'
+import {Reference, Issue} from './Issue'
 import {scenarioNameTemplate} from '../utils/test'
+import {Subtask} from './Subtask'
 
 const instance = loadFeature('./features/Issue.instance.feature', {
   scenarioNameTemplate
@@ -26,32 +27,56 @@ defineFeature(instance, test => {
     })
 
     then('instance detects the subtasks', () => {
-      expect(issue.subtasks).toEqual(
-        new Map([
-          [
-            '#1',
-            {
-              closed: true,
-              id: '1',
-              removed: false,
-              title: 'Closed title',
-              owner: 'CompliancePal',
-              repo: 'issue-tracer'
-            }
-          ],
-          [
-            '#2',
-            {
-              closed: false,
-              id: '2',
-              removed: false,
-              title: 'Open title',
-              owner: 'CompliancePal',
-              repo: 'issue-tracer'
-            }
-          ]
-        ])
-      )
+      expect(issue.subtasks.size).toEqual(2)
+      expect(
+        issue.subtasks.get('#1')?.equals({
+          closed: true,
+          id: '1',
+          removed: false,
+          title: 'Closed title',
+          owner: 'CompliancePal',
+          repo: 'issue-tracer',
+          crossReference: false
+        })
+      ).toBeTruthy()
+      expect(
+        issue.subtasks.get('#2')?.equals({
+          closed: false,
+          id: '2',
+          removed: false,
+          title: 'Open title',
+          owner: 'CompliancePal',
+          repo: 'issue-tracer',
+          crossReference: false
+        })
+      ).toBeTruthy()
+
+      // expect(issue.subtasks).toEqual(
+      //   new Map([
+      //     [
+      //       '#1',
+      //       {
+      //         closed: true,
+      //         id: '1',
+      //         removed: false,
+      //         title: 'Closed title',
+      //         owner: 'CompliancePal',
+      //         repo: 'issue-tracer'
+      //       }
+      //     ],
+      //     [
+      //       '#2',
+      //       {
+      //         closed: false,
+      //         id: '2',
+      //         removed: false,
+      //         title: 'Open title',
+      //         owner: 'CompliancePal',
+      //         repo: 'issue-tracer'
+      //       }
+      //     ]
+      //   ])
+      // )
     })
   })
 
@@ -105,7 +130,7 @@ defineFeature(instance, test => {
     })
 
     and('new subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create(JSON.parse(docString))
     })
 
     when('subtask added', () => {
@@ -134,7 +159,10 @@ defineFeature(instance, test => {
     })
 
     and('existing cross reference subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create({
+        ...JSON.parse(docString),
+        crossReference: true
+      })
     })
 
     when('subtask added', () => {
@@ -163,7 +191,7 @@ defineFeature(instance, test => {
     })
 
     and('subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create(JSON.parse(docString))
     })
 
     when('added', () => {

@@ -7,10 +7,11 @@ import stringify from 'remark-stringify'
 import visit from 'unist-util-visit'
 import {Parent, Node} from 'unist'
 import YAML from 'yaml'
-import {Issue, Reference, Subtask} from '../domain/Issue'
+import {Issue, Reference} from '../domain/Issue'
 import {Section} from './Section'
 import {SectionExporter} from './exporters/SectionExporter'
 import {styleMarkdownOutput} from '../plugins/unified'
+import {Subtask} from '../domain/Subtask'
 
 export interface RelsRepo<T> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -36,6 +37,10 @@ export class BodyIssueRels implements RelsRepo<Issue> {
           issue_number: parseInt(res[4])
         }
       : undefined
+  }
+
+  static isCrossReference(ref: Reference, issue: Issue): boolean {
+    return issue.repo !== ref.repo || issue.owner !== ref.owner
   }
 
   protected get processor(): Processor {
@@ -122,10 +127,7 @@ export class BodyIssueRels implements RelsRepo<Issue> {
             _subtask =>
               `* [${_subtask.closed ? 'x' : ' '}] ${
                 _subtask.title
-              } (${subtaskToString(
-                _subtask,
-                issue.isCrossReference(_subtask)
-              )})`
+              } (${_subtask.toString()})`
           )
           .join('\n')}\n`
 
@@ -238,14 +240,25 @@ export class BodyIssueRels implements RelsRepo<Issue> {
                   if (parsed) {
                     const {issue_number, owner, repo} = parsed
 
-                    issue.subtasks.set(raw, {
-                      id: issue_number.toString(),
-                      title,
-                      removed: false,
-                      closed: !!item.checked,
-                      owner,
-                      repo
-                    })
+                    issue.subtasks.set(
+                      raw,
+                      Subtask.create({
+                        id: issue_number.toString(),
+                        title,
+                        removed: false,
+                        closed: !!item.checked,
+                        owner,
+                        repo,
+                        crossReference: BodyIssueRels.isCrossReference(
+                          {
+                            owner,
+                            repo,
+                            issue_number
+                          },
+                          issue
+                        )
+                      })
+                    )
                   }
                 })
               })
@@ -254,12 +267,4 @@ export class BodyIssueRels implements RelsRepo<Issue> {
       }
     })
   }
-}
-
-const subtaskToString = (
-  subtask: Subtask,
-  isCrossReference: boolean
-): string => {
-  const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : ''
-  return `${reference}#${subtask.id}`
 }
