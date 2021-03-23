@@ -1,7 +1,7 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
-import {IPartOf, Issue, Subtask} from './Issue'
+import {Reference, Issue, Subtask} from './Issue'
 import {scenarioNameTemplate} from '../utils/test'
 
 const instance = loadFeature('./features/Issue.instance.feature', {
@@ -220,7 +220,7 @@ defineFeature(instance, test => {
         owner: 'CompliancePal',
         repo: 'issue-tracer',
         issue_number: 123
-      } as IPartOf)
+      } as Reference)
       expect(issue.hasParent()).toBeTruthy()
     })
   })

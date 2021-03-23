@@ -7,16 +7,10 @@ import stringify from 'remark-stringify'
 import visit from 'unist-util-visit'
 import {Parent, Node} from 'unist'
 import YAML from 'yaml'
-import {Issue, Subtask} from '../domain/Issue'
-import {Section} from '../domain/Section'
+import {Issue, Reference, Subtask} from '../domain/Issue'
+import {Section} from './Section'
 import {SectionExporter} from './exporters/SectionExporter'
 import {styleMarkdownOutput} from '../plugins/unified'
-
-export interface IPartOf {
-  owner: string
-  repo: string
-  issue_number: number
-}
 
 export interface RelsRepo<T> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -31,7 +25,7 @@ export class BodyIssueRels implements RelsRepo<Issue> {
     raw: string,
     owner: string,
     repo: string
-  ): IPartOf | undefined {
+  ): Reference | undefined {
     const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/
     const res = raw.match(re)
 

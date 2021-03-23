@@ -228,7 +228,7 @@ class Issue extends Entity_1.Entity {
         this.subtasks = new Map();
         const rels = new BodyIssueRels_1.BodyIssueRels();
         this.relsBackend = rels;
-        this.detectsRels();
+        this.detectsRelationships();
     }
     static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
         const result = new Issue(issue, owner, repo);
@@ -285,17 +285,17 @@ class Issue extends Entity_1.Entity {
                 ? subtask.id
                 : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
-        this.updateBody();
+        this.updateRelationships();
     }
     setResolvedBy(pullRequest) {
         this.resolvedBy = pullRequest;
-        this.updateBody();
+        this.updateRelationships();
         return this;
     }
-    updateBody() {
+    updateRelationships() {
         this.relsBackend.save(this);
     }
-    detectsRels() {
+    detectsRelationships() {
         this.relsBackend.load(this);
     }
 }
@@ -446,72 +446,6 @@ exports.PullRequest = PullRequest;
 
 /***/ }),
 
-/***/ 6522:
-/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Section = void 0;
-const structured_field_values_1 = __webpack_require__(2363);
-class Section {
-    constructor(flag) {
-        this.props = {
-            flag
-        };
-    }
-    get start() {
-        return this.props.start;
-    }
-    get end() {
-        return this.props.end;
-    }
-    get found() {
-        return this.props.start !== undefined && this.props.end !== undefined;
-    }
-    get depth() {
-        return this.props.depth;
-    }
-    enter(start, depth) {
-        this.props.start = start;
-        this.props.depth = depth;
-    }
-    leave(end) {
-        this.props.end = end;
-    }
-    isEndMarker(depth) {
-        if (this.props.depth === undefined)
-            return false;
-        return depth <= this.props.depth;
-    }
-    isInside() {
-        return this.props.start !== undefined && this.props.end === undefined;
-    }
-    isStartMarker(node) {
-        if (node.type === 'heading') {
-            if (node.children.length === 2) {
-                if (node.children[1].type === 'html') {
-                    const value = node.children[1].value;
-                    const m = value.match(/^<!-- (?<meta>.*) -->$/);
-                    if (m !== null && m.groups) {
-                        const { [this.props.flag]: { value: traceability } = {
-                            value: false
-                        } } = structured_field_values_1.decodeDict(m.groups.meta);
-                        if (traceability) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
-    }
-}
-exports.Section = Section;
-
-
-/***/ }),
-
 /***/ 3109:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -637,7 +571,7 @@ const remark_gfm_1 = __importDefault(__webpack_require__(5772));
 const remark_stringify_1 = __importDefault(__webpack_require__(7114));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const yaml_1 = __importDefault(__webpack_require__(3552));
-const Section_1 = __webpack_require__(6522);
+const Section_1 = __webpack_require__(7980);
 const SectionExporter_1 = __webpack_require__(1120);
 const unified_2 = __webpack_require__(4079);
 class BodyIssueRels {
@@ -891,6 +825,72 @@ class IssuesRepo {
     }
 }
 exports.IssuesRepo = IssuesRepo;
+
+
+/***/ }),
+
+/***/ 7980:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Section = void 0;
+const structured_field_values_1 = __webpack_require__(2363);
+class Section {
+    constructor(flag) {
+        this.props = {
+            flag
+        };
+    }
+    get start() {
+        return this.props.start;
+    }
+    get end() {
+        return this.props.end;
+    }
+    get found() {
+        return this.props.start !== undefined && this.props.end !== undefined;
+    }
+    get depth() {
+        return this.props.depth;
+    }
+    enter(start, depth) {
+        this.props.start = start;
+        this.props.depth = depth;
+    }
+    leave(end) {
+        this.props.end = end;
+    }
+    isEndMarker(depth) {
+        if (this.props.depth === undefined)
+            return false;
+        return depth <= this.props.depth;
+    }
+    isInside() {
+        return this.props.start !== undefined && this.props.end === undefined;
+    }
+    isStartMarker(node) {
+        if (node.type === 'heading') {
+            if (node.children.length === 2) {
+                if (node.children[1].type === 'html') {
+                    const value = node.children[1].value;
+                    const m = value.match(/^<!-- (?<meta>.*) -->$/);
+                    if (m !== null && m.groups) {
+                        const { [this.props.flag]: { value: traceability } = {
+                            value: false
+                        } } = structured_field_values_1.decodeDict(m.groups.meta);
+                        if (traceability) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+exports.Section = Section;
 
 
 /***/ }),

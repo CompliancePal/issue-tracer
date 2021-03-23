@@ -7,7 +7,7 @@ import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
 import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
 
-export interface IPartOf {
+export interface Reference {
   owner: string
   repo: string
   issue_number: number
@@ -48,7 +48,7 @@ export class Issue extends Entity<GitHubIssue> {
 
   readonly owner: string
   readonly repo: string
-  partOf?: IPartOf
+  partOf?: Reference
   subtasks: Map<string, Subtask>
   resolvedBy?: PullRequest
   relsBackend: RelsRepo<Issue>
@@ -64,7 +64,7 @@ export class Issue extends Entity<GitHubIssue> {
 
     const rels = new BodyIssueRels()
     this.relsBackend = rels
-    this.detectsRels()
+    this.detectsRelationships()
   }
 
   get body(): string {
@@ -127,22 +127,22 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    this.updateBody()
+    this.updateRelationships()
   }
 
   setResolvedBy(pullRequest: PullRequest): Issue {
     this.resolvedBy = pullRequest
 
-    this.updateBody()
+    this.updateRelationships()
 
     return this
   }
 
-  protected updateBody(): void {
+  protected updateRelationships(): void {
     this.relsBackend.save(this)
   }
 
-  protected detectsRels(): void {
+  protected detectsRelationships(): void {
     this.relsBackend.load(this)
   }
 }

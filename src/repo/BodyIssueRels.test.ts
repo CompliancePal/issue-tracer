@@ -1,6 +1,7 @@
 import {defineFeature, loadFeature} from 'jest-cucumber'
+import {Reference} from '../domain/Issue'
 import {scenarioNameTemplate} from '../utils/test'
-import {BodyIssueRels, IPartOf} from './BodyIssueRels'
+import {BodyIssueRels} from './BodyIssueRels'
 
 const classMethods = loadFeature('./features/BodyIssueRels.feature', {
   scenarioNameTemplate
@@ -11,7 +12,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf | undefined
+    let result: Reference | undefined
 
     given('reference', (docString: string) => {
       reference = docString
@@ -38,7 +39,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf | undefined
+    let result: Reference | undefined
 
     given('reference', (docString: string) => {
       reference = docString
@@ -65,7 +66,7 @@ defineFeature(classMethods, test => {
     let reference: string
     let owner: string
     let repo: string
-    let result: IPartOf | undefined
+    let result: Reference | undefined
 
     given('reference', (docString: string) => {
       reference = docString
