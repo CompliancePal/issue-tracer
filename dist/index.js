@@ -221,15 +221,14 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Issue = void 0;
 const unified_1 = __importDefault(__webpack_require__(5075));
 const remark_parse_1 = __importDefault(__webpack_require__(4859));
-const remark_frontmatter_1 = __importDefault(__webpack_require__(762));
 const remark_stringify_1 = __importDefault(__webpack_require__(7114));
 const remark_gfm_1 = __importDefault(__webpack_require__(5772));
-const yaml_1 = __importDefault(__webpack_require__(3552));
 const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
 const Section_1 = __webpack_require__(6522);
 const unified_2 = __webpack_require__(4079);
 const SectionExporter_1 = __webpack_require__(4531);
+const BodyIssueRels_1 = __webpack_require__(5710);
 const subtaskToString = (subtask, isCrossReference) => {
     const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
     return `${reference}#${subtask.id}`;
@@ -240,25 +239,18 @@ class Issue extends Entity_1.Entity {
         this.props = issue;
         this.owner = owner;
         this.repo = repo;
-        this.partOf = this.detectsPartOf();
-        this.subtasks = this.detectsSubIssues();
+        // this.partOf = this.detectsPartOf()
+        this.subtasks = new Map();
+        const rels = new BodyIssueRels_1.BodyIssueRels();
+        this.detectsRels(rels);
     }
     static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
-        return new Issue(issue, owner, repo);
+        const result = new Issue(issue, owner, repo);
+        return result;
     }
     static fromApiPayload(payload, owner, repo) {
-        return new Issue(payload, owner, repo);
-    }
-    static parsePartOf(raw, owner, repo) {
-        const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
-        const res = raw.match(re);
-        return res
-            ? {
-                owner: res[2] ? res[2] : owner,
-                repo: res[3] ? res[3] : repo,
-                issue_number: parseInt(res[4])
-            }
-            : undefined;
+        const result = new Issue(payload, owner, repo);
+        return result;
     }
     get body() {
         return this.props.body;
@@ -318,7 +310,7 @@ class Issue extends Entity_1.Entity {
             .use(remark_parse_1.default)
             .use(remark_gfm_1.default)
             .use(unified_2.styleMarkdownOutput, {
-            comment: '<!-- Section created by CompliancePal. Do not edit -->'
+            comment: SectionExporter_1.SectionExporter.COMMENT
         })
             .use(() => {
             return tree => {
@@ -367,101 +359,10 @@ class Issue extends Entity_1.Entity {
         })
             .use(remark_stringify_1.default);
         const sectionBody = stringifier.processSync(this.body);
-        // console.log(stringifier.data().toMarkdownExtensions)
         this.body = sectionBody.contents.trim();
     }
-    detectsPartOf() {
-        let partOf;
-        unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_frontmatter_1.default, [
-            {
-                type: 'yaml',
-                marker: {
-                    open: '-',
-                    close: '-'
-                },
-                anywhere: true
-            }
-        ])
-            .use(() => {
-            return tree => {
-                unist_util_visit_1.default(tree, 'yaml', node => {
-                    const patched = node.value.replace(/partOf: (#[0-9]*)/, 'partOf: "$1"');
-                    node.data = yaml_1.default.parse(patched);
-                });
-            };
-        })
-            .use(() => {
-            return tree => {
-                unist_util_visit_1.default(tree, 'yaml', node => {
-                    if (node.data && node.data.partOf) {
-                        partOf = Issue.parsePartOf(node.data.partOf, this.owner, this.repo);
-                    }
-                });
-            };
-        })
-            .use(remark_stringify_1.default)
-            .processSync(this.props.body);
-        return partOf;
-    }
-    detectsSubIssues() {
-        const subtasks = new Map();
-        unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_gfm_1.default)
-            .use(remark_stringify_1.default)
-            .use(() => {
-            return tree => {
-                const section = new Section_1.Section('traceability');
-                unist_util_visit_1.default(tree, ['heading', 'list'], (node, position) => {
-                    switch (node.type) {
-                        case 'heading':
-                            // no information
-                            if (section.isStartMarker(node)) {
-                                section.enter(position, node.depth);
-                            }
-                            else {
-                                // inside section
-                                if (section.isInside()) {
-                                    // end
-                                    if (section.isEndMarker(node.depth)) {
-                                        section.leave(position);
-                                    }
-                                }
-                            }
-                            break;
-                        case 'list':
-                            if (section.isInside()) {
-                                unist_util_visit_1.default(node, 'listItem', item => {
-                                    unist_util_visit_1.default(item, 'paragraph', p => {
-                                        unist_util_visit_1.default(p, 'text', text => {
-                                            const raw = text.value
-                                                .split('(')[1]
-                                                .replace(')', '');
-                                            const title = text.value.split(' (')[0];
-                                            const parsed = Issue.parsePartOf(raw, this.owner, this.repo);
-                                            if (parsed) {
-                                                const { issue_number, owner, repo } = parsed;
-                                                subtasks.set(raw, {
-                                                    id: issue_number.toString(),
-                                                    title,
-                                                    removed: false,
-                                                    closed: !!item.checked,
-                                                    owner,
-                                                    repo
-                                                });
-                                            }
-                                        });
-                                    });
-                                });
-                            }
-                    }
-                });
-            };
-        })
-            .processSync(this.props.body);
-        return subtasks;
+    detectsRels(rels) {
+        rels.load(this);
     }
 }
 exports.Issue = Issue;
@@ -634,6 +535,9 @@ class Section {
     get found() {
         return this.props.start !== undefined && this.props.end !== undefined;
     }
+    get depth() {
+        return this.props.depth;
+    }
     enter(start, depth) {
         this.props.start = start;
         this.props.depth = depth;
@@ -689,7 +593,7 @@ class SectionExporter {
         return '#'.repeat(this.depth + increment);
     }
     heading() {
-        return `${this.headingString(0)} Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`;
+        return `${this.headingString(0)} Traceability <!-- traceability -->\n${SectionExporter.COMMENT}\n`;
     }
     resolvedBy(pullRequest) {
         return pullRequest
@@ -733,6 +637,7 @@ ${testCase.steps
     }
 }
 exports.SectionExporter = SectionExporter;
+SectionExporter.COMMENT = '<!-- Section created by CompliancePal. Do not edit -->';
 
 
 /***/ }),
@@ -840,6 +745,122 @@ function styleMarkdownOutput(options) {
     });
 }
 exports.styleMarkdownOutput = styleMarkdownOutput;
+
+
+/***/ }),
+
+/***/ 5710:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BodyIssueRels = void 0;
+// import * as core from '@actions/core'
+const unified_1 = __importDefault(__webpack_require__(5075));
+const remark_parse_1 = __importDefault(__webpack_require__(4859));
+const remark_frontmatter_1 = __importDefault(__webpack_require__(762));
+const remark_gfm_1 = __importDefault(__webpack_require__(5772));
+const unist_util_visit_1 = __importDefault(__webpack_require__(199));
+const yaml_1 = __importDefault(__webpack_require__(3552));
+const Section_1 = __webpack_require__(6522);
+class BodyIssueRels {
+    constructor() {
+        this.processor = unified_1.default()
+            .use(remark_parse_1.default)
+            .use(remark_gfm_1.default)
+            .use(remark_frontmatter_1.default, [
+            {
+                type: 'yaml',
+                marker: {
+                    open: '-',
+                    close: '-'
+                },
+                anywhere: true
+            }
+        ]);
+    }
+    static parsePartOf(raw, owner, repo) {
+        const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
+        const res = raw.match(re);
+        return res
+            ? {
+                owner: res[2] ? res[2] : owner,
+                repo: res[3] ? res[3] : repo,
+                issue_number: parseInt(res[4])
+            }
+            : undefined;
+    }
+    load(issue) {
+        const tree = this.processor.parse(issue.body);
+        this.findsPartOf(issue, tree);
+        this.findsSubtasks(issue, tree);
+    }
+    save(issue) {
+        issue;
+    }
+    findsPartOf(issue, tree) {
+        unist_util_visit_1.default(tree, 'yaml', node => {
+            // core.debug(JSON.stringify(node))
+            const patched = node.value.replace(/partOf: (#[0-9]*)/, 'partOf: "$1"');
+            node.data = yaml_1.default.parse(patched);
+            if (node.data && node.data.partOf) {
+                issue.partOf = BodyIssueRels.parsePartOf(node.data.partOf, issue.owner, issue.repo);
+            }
+        });
+    }
+    findsSubtasks(issue, tree) {
+        const section = new Section_1.Section('traceability');
+        unist_util_visit_1.default(tree, ['heading', 'list'], (node, position) => {
+            switch (node.type) {
+                case 'heading':
+                    // no information
+                    if (section.isStartMarker(node)) {
+                        section.enter(position, node.depth);
+                    }
+                    else {
+                        // inside section
+                        if (section.isInside()) {
+                            // end
+                            if (section.isEndMarker(node.depth)) {
+                                section.leave(position);
+                            }
+                        }
+                    }
+                    break;
+                case 'list':
+                    if (section.isInside()) {
+                        unist_util_visit_1.default(node, 'listItem', item => {
+                            unist_util_visit_1.default(item, 'paragraph', p => {
+                                unist_util_visit_1.default(p, 'text', text => {
+                                    const raw = text.value
+                                        .split('(')[1]
+                                        .replace(')', '');
+                                    const title = text.value.split(' (')[0];
+                                    const parsed = BodyIssueRels.parsePartOf(raw, issue.owner, issue.repo);
+                                    if (parsed) {
+                                        const { issue_number, owner, repo } = parsed;
+                                        issue.subtasks.set(raw, {
+                                            id: issue_number.toString(),
+                                            title,
+                                            removed: false,
+                                            closed: !!item.checked,
+                                            owner,
+                                            repo
+                                        });
+                                    }
+                                });
+                            });
+                        });
+                    }
+            }
+        });
+    }
+}
+exports.BodyIssueRels = BodyIssueRels;
 
 
 /***/ }),

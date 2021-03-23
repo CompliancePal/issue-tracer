@@ -1,5 +1,6 @@
 Feature: Issue class properties
 
+        @issue-25
         Scenario: parsePartOf with local reference
             Given reference
               """
@@ -23,6 +24,7 @@ Feature: Issue class properties
              }
              """
 
+        @issue-25
         Scenario: parsePartOf with remote reference
             Given reference
               """
@@ -46,6 +48,7 @@ Feature: Issue class properties
              }
              """
 
+        @issue-25
         Scenario: parsePartOf does not find invalid
             Given reference
               """

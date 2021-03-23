@@ -4,12 +4,9 @@ import {
 } from '@octokit/webhooks-definitions/schema'
 import unified from 'unified'
 import markdown from 'remark-parse'
-import frontmatter from 'remark-frontmatter'
 import stringify from 'remark-stringify'
 import gfm from 'remark-gfm'
-import YAML from 'yaml'
 import visit from 'unist-util-visit'
-// import filter from 'unist-util-filter'
 import {Parent} from 'unist'
 import {Entity} from './Entity'
 import {Section} from './Section'
@@ -17,6 +14,7 @@ import {styleMarkdownOutput} from '../plugins/unified'
 import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
 import {SectionExporter} from './exporters/SectionExporter'
+import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
 
 export interface IPartOf {
   owner: string
@@ -50,7 +48,9 @@ export class Issue extends Entity<GitHubIssue> {
       owner: {login: owner}
     }
   }: IssuesOpenedEvent): Issue {
-    return new Issue(issue, owner, repo)
+    const result = new Issue(issue, owner, repo)
+
+    return result
   }
 
   static fromApiPayload(
@@ -58,29 +58,14 @@ export class Issue extends Entity<GitHubIssue> {
     owner: string,
     repo: string
   ): Issue {
-    return new Issue(payload, owner, repo)
+    const result = new Issue(payload, owner, repo)
+
+    return result
   }
 
-  static parsePartOf(
-    raw: string,
-    owner: string,
-    repo: string
-  ): IPartOf | undefined {
-    const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/
-    const res = raw.match(re)
-
-    return res
-      ? {
-          owner: res[2] ? res[2] : owner,
-          repo: res[3] ? res[3] : repo,
-          issue_number: parseInt(res[4])
-        }
-      : undefined
-  }
-
-  readonly partOf?: IPartOf
   readonly owner: string
   readonly repo: string
+  partOf?: IPartOf
   subtasks: Map<string, Subtask>
   resolvedBy?: PullRequest
 
@@ -90,8 +75,11 @@ export class Issue extends Entity<GitHubIssue> {
     this.props = issue
     this.owner = owner
     this.repo = repo
-    this.partOf = this.detectsPartOf()
-    // this.subtasks = this.detectsSubtasks()
+    // this.partOf = this.detectsPartOf()
+    this.subtasks = new Map<string, Subtask>()
+
+    const rels = new BodyIssueRels()
+    this.detectsRels(rels)
   }
 
   get body(): string {
@@ -252,111 +240,7 @@ export class Issue extends Entity<GitHubIssue> {
     this.body = (sectionBody.contents as string).trim()
   }
 
-  protected detectsPartOf(): IPartOf | undefined {
-    let partOf: IPartOf | undefined
-
-    unified()
-      .use(markdown)
-      .use(frontmatter, [
-        {
-          type: 'yaml',
-          marker: {
-            open: '-',
-            close: '-'
-          },
-          anywhere: true
-        }
-      ])
-      .use(() => {
-        return tree => {
-          visit(tree, 'yaml', node => {
-            const patched = (node.value as string).replace(
-              /partOf: (#[0-9]*)/,
-              'partOf: "$1"'
-            )
-
-            node.data = YAML.parse(patched)
-          })
-        }
-      })
-      .use(() => {
-        return tree => {
-          visit(tree, 'yaml', node => {
-            if (node.data && node.data.partOf) {
-              partOf = Issue.parsePartOf(
-                node.data.partOf as string,
-                this.owner,
-                this.repo
-              )
-            }
-          })
-        }
-      })
-      .use(stringify)
-      .processSync(this.props.body)
-
-    return partOf
-  }
-
-  protected detectsSubtasks(): Map<string, Subtask> {
-    const subtasks = new Map<string, Subtask>()
-
-    const tree = unified()
-      .use(markdown)
-      .use(gfm)
-      // .use(stringify)
-      .parse(this.props.body)
-
-    const section = new Section('traceability')
-
-    visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
-      switch (node.type) {
-        case 'heading':
-          // no information
-          if (section.isStartMarker(node)) {
-            section.enter(position, node.depth as number)
-          } else {
-            // inside section
-            if (section.isInside()) {
-              // end
-              if (section.isEndMarker(node.depth as number)) {
-                section.leave(position)
-              }
-            }
-          }
-          break
-        case 'list':
-          if (section.isInside()) {
-            visit(node, 'listItem', item => {
-              visit(item, 'paragraph', p => {
-                visit(p, 'text', text => {
-                  const raw = (text.value as string)
-                    .split('(')[1]
-                    .replace(')', '')
-
-                  const title = (text.value as string).split(' (')[0]
-
-                  const parsed = Issue.parsePartOf(raw, this.owner, this.repo)
-
-                  if (parsed) {
-                    const {issue_number, owner, repo} = parsed
-
-                    subtasks.set(raw, {
-                      id: issue_number.toString(),
-                      title,
-                      removed: false,
-                      closed: !!item.checked,
-                      owner,
-                      repo
-                    })
-                  }
-                })
-              })
-            })
-          }
-      }
-    })
-
-    return subtasks
+  protected detectsRels(rels: RelsRepo<Issue>): void {
+    rels.load(this)
   }
 }

@@ -1,4 +1,4 @@
-Feature: TestCaseExporter
+Feature: SectionExporter
 
         Scenario: details
             Given test case
