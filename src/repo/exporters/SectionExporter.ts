@@ -1,6 +1,8 @@
-import {PullRequest, TestCase} from '../PullRequest'
+import {PullRequest, TestCase} from '../../domain/PullRequest'
 
 export class SectionExporter {
+  static COMMENT = '<!-- Section created by CompliancePal. Do not edit -->'
+
   depth: number
 
   constructor(depth: number) {
@@ -12,9 +14,9 @@ export class SectionExporter {
   }
 
   heading(): string {
-    return `${this.headingString(
-      0
-    )} Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`
+    return `${this.headingString(0)} Traceability <!-- traceability -->\n${
+      SectionExporter.COMMENT
+    }\n`
   }
 
   resolvedBy(pullRequest?: PullRequest): string | null {

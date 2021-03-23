@@ -40,6 +40,7 @@ exports.issuesHandler = void 0;
 const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 const Issue_1 = __webpack_require__(2422);
+const Subtask_1 = __webpack_require__(3581);
 const Issues_1 = __webpack_require__(2724);
 const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* () {
     let issue, repo, relatedIssue;
@@ -62,14 +63,14 @@ const issuesHandler = (ghToken) => __awaiter(void 0, void 0, void 0, function* (
             }
             core.info(`Related issue ${relatedIssue.number} found sucessfuly`);
             core.info(`Related issue ${relatedIssue.number} has ${relatedIssue.subtasks.size} subtasks`);
-            relatedIssue.addSubtask({
+            relatedIssue.addSubtask(Subtask_1.Subtask.create({
                 id: issue.number.toString(),
                 title: issue.title,
                 closed: issue.closed,
-                removed: false,
                 owner: issue.owner,
-                repo: issue.repo
-            });
+                repo: issue.repo,
+                crossReference: relatedIssue.isCrossReference(issue)
+            }));
             yield relatedIssue.save(repo);
             // await repo.save(relatedIssue)
             core.info(`Related issue ${relatedIssue.number} updated sucessfuly`);
@@ -170,7 +171,7 @@ const pullRequestHandler = (ghToken) => __awaiter(void 0, void 0, void 0, functi
             //   name: 'repo_name',
             //   owner: 'owner'
             // })
-            issue.addResolvedBy(pullRequest);
+            issue.setResolvedBy(pullRequest);
             issue.save(repo);
             core.info(`Resolved issue ${issue.number} updated sucessfuly`);
             break;
@@ -214,51 +215,29 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.Issue = void 0;
-const unified_1 = __importDefault(__webpack_require__(5075));
-const remark_parse_1 = __importDefault(__webpack_require__(4859));
-const remark_frontmatter_1 = __importDefault(__webpack_require__(762));
-const remark_stringify_1 = __importDefault(__webpack_require__(7114));
-const remark_gfm_1 = __importDefault(__webpack_require__(5772));
-const yaml_1 = __importDefault(__webpack_require__(3552));
-const unist_util_visit_1 = __importDefault(__webpack_require__(199));
 const Entity_1 = __webpack_require__(6217);
-const Section_1 = __webpack_require__(6522);
-const unified_2 = __webpack_require__(4079);
-const SectionExporter_1 = __webpack_require__(4531);
-const subtaskToString = (subtask, isCrossReference) => {
-    const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : '';
-    return `${reference}#${subtask.id}`;
-};
+const BodyIssueRels_1 = __webpack_require__(5710);
 class Issue extends Entity_1.Entity {
     constructor(issue, owner, repo) {
         super(issue);
         this.props = issue;
         this.owner = owner;
         this.repo = repo;
-        this.partOf = this.detectsPartOf();
-        this.subtasks = this.detectsSubIssues();
+        // this.partOf = this.detectsPartOf()
+        this.subtasks = new Map();
+        const rels = new BodyIssueRels_1.BodyIssueRels();
+        this.relsBackend = rels;
+        this.detectsRelationships();
     }
     static fromEventPayload({ issue, repository: { name: repo, owner: { login: owner } } }) {
-        return new Issue(issue, owner, repo);
+        const result = new Issue(issue, owner, repo);
+        return result;
     }
     static fromApiPayload(payload, owner, repo) {
-        return new Issue(payload, owner, repo);
-    }
-    static parsePartOf(raw, owner, repo) {
-        const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
-        const res = raw.match(re);
-        return res
-            ? {
-                owner: res[2] ? res[2] : owner,
-                repo: res[3] ? res[3] : repo,
-                issue_number: parseInt(res[4])
-            }
-            : undefined;
+        const result = new Issue(payload, owner, repo);
+        return result;
     }
     get body() {
         return this.props.body;
@@ -300,6 +279,7 @@ class Issue extends Entity_1.Entity {
     isCrossReference(issue) {
         return this.owner !== issue.owner || this.repo !== issue.repo;
     }
+    //TODO: investigate how to create subtask also from issue
     addSubtask(subtask) {
         const id = this.isCrossReference(subtask)
             ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
@@ -307,161 +287,18 @@ class Issue extends Entity_1.Entity {
                 ? subtask.id
                 : `#${subtask.id}`;
         this.subtasks.set(id, subtask);
-        this.updateBody();
+        this.updateRelationships();
     }
-    addResolvedBy(pullRequest) {
+    setResolvedBy(pullRequest) {
         this.resolvedBy = pullRequest;
-        this.updateBody();
+        this.updateRelationships();
+        return this;
     }
-    updateBody() {
-        const stringifier = unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_gfm_1.default)
-            .use(unified_2.styleMarkdownOutput, {
-            comment: '<!-- Section created by CompliancePal. Do not edit -->'
-        })
-            .use(() => {
-            return tree => {
-                const section = new Section_1.Section('traceability');
-                const exporter = new SectionExporter_1.SectionExporter(2);
-                const sectionHeading = exporter.heading();
-                const resolvedBySection = exporter.resolvedBy(this.resolvedBy);
-                const testCasesSection = this.resolvedBy && exporter.testCases(this.resolvedBy);
-                const subtasksSection = `### Related issues\n\n${Array.from(this.subtasks.values())
-                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${subtaskToString(_subtask, this.isCrossReference(_subtask))})`)
-                    .join('\n')}\n`;
-                const processor = unified_1.default().use(remark_parse_1.default).use(remark_gfm_1.default);
-                unist_util_visit_1.default(tree, 'heading', (node, position) => {
-                    if (section.isStartMarker(node)) {
-                        section.enter(position, node.depth);
-                    }
-                    else {
-                        // inside section
-                        if (section.isInside()) {
-                            // end
-                            if (section.isEndMarker(node.depth)) {
-                                section.leave(position);
-                            }
-                        }
-                    }
-                });
-                if (section.isInside()) {
-                    section.leave(tree.children.length);
-                }
-                if (!section.found)
-                    return tree;
-                const before = tree.children.filter((node, index) => index < (section.start || 0));
-                const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
-                const sectionTree = processor.parse([
-                    sectionHeading,
-                    resolvedBySection,
-                    testCasesSection,
-                    subtasksSection
-                ]
-                    .filter(part => part !== null)
-                    .join('\n'));
-                const result = processor.parse('');
-                result.children = before.concat(sectionTree.children).concat(after);
-                return result;
-            };
-        })
-            .use(remark_stringify_1.default);
-        const sectionBody = stringifier.processSync(this.body);
-        // console.log(stringifier.data().toMarkdownExtensions)
-        this.body = sectionBody.contents.trim();
+    updateRelationships() {
+        this.relsBackend.save(this);
     }
-    detectsPartOf() {
-        let partOf;
-        unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_frontmatter_1.default, [
-            {
-                type: 'yaml',
-                marker: {
-                    open: '-',
-                    close: '-'
-                },
-                anywhere: true
-            }
-        ])
-            .use(() => {
-            return tree => {
-                unist_util_visit_1.default(tree, 'yaml', node => {
-                    const patched = node.value.replace(/partOf: (#[0-9]*)/, 'partOf: "$1"');
-                    node.data = yaml_1.default.parse(patched);
-                });
-            };
-        })
-            .use(() => {
-            return tree => {
-                unist_util_visit_1.default(tree, 'yaml', node => {
-                    if (node.data && node.data.partOf) {
-                        partOf = Issue.parsePartOf(node.data.partOf, this.owner, this.repo);
-                    }
-                });
-            };
-        })
-            .use(remark_stringify_1.default)
-            .processSync(this.props.body);
-        return partOf;
-    }
-    detectsSubIssues() {
-        const subtasks = new Map();
-        unified_1.default()
-            .use(remark_parse_1.default)
-            .use(remark_gfm_1.default)
-            .use(remark_stringify_1.default)
-            .use(() => {
-            return tree => {
-                const section = new Section_1.Section('traceability');
-                unist_util_visit_1.default(tree, ['heading', 'list'], (node, position) => {
-                    switch (node.type) {
-                        case 'heading':
-                            // no information
-                            if (section.isStartMarker(node)) {
-                                section.enter(position, node.depth);
-                            }
-                            else {
-                                // inside section
-                                if (section.isInside()) {
-                                    // end
-                                    if (section.isEndMarker(node.depth)) {
-                                        section.leave(position);
-                                    }
-                                }
-                            }
-                            break;
-                        case 'list':
-                            if (section.isInside()) {
-                                unist_util_visit_1.default(node, 'listItem', item => {
-                                    unist_util_visit_1.default(item, 'paragraph', p => {
-                                        unist_util_visit_1.default(p, 'text', text => {
-                                            const raw = text.value
-                                                .split('(')[1]
-                                                .replace(')', '');
-                                            const title = text.value.split(' (')[0];
-                                            const parsed = Issue.parsePartOf(raw, this.owner, this.repo);
-                                            if (parsed) {
-                                                const { issue_number, owner, repo } = parsed;
-                                                subtasks.set(raw, {
-                                                    id: issue_number.toString(),
-                                                    title,
-                                                    removed: false,
-                                                    closed: !!item.checked,
-                                                    owner,
-                                                    repo
-                                                });
-                                            }
-                                        });
-                                    });
-                                });
-                            }
-                    }
-                });
-            };
-        })
-            .processSync(this.props.body);
-        return subtasks;
+    detectsRelationships() {
+        this.relsBackend.load(this);
     }
 }
 exports.Issue = Issue;
@@ -611,128 +448,64 @@ exports.PullRequest = PullRequest;
 
 /***/ }),
 
-/***/ 6522:
+/***/ 3581:
 /***/ ((__unused_webpack_module, exports, __webpack_require__) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.Section = void 0;
-const structured_field_values_1 = __webpack_require__(2363);
-class Section {
-    constructor(flag) {
-        this.props = {
-            flag
-        };
+exports.Subtask = void 0;
+const ValueObject_1 = __webpack_require__(209);
+class Subtask extends ValueObject_1.ValueObject {
+    static create(props) {
+        return new Subtask(Object.assign({}, props));
     }
-    get start() {
-        return this.props.start;
+    constructor(props) {
+        super(props);
     }
-    get end() {
-        return this.props.end;
+    get repo() {
+        return this.props.repo;
     }
-    get found() {
-        return this.props.start !== undefined && this.props.end !== undefined;
+    get owner() {
+        return this.props.owner;
     }
-    enter(start, depth) {
-        this.props.start = start;
-        this.props.depth = depth;
+    get closed() {
+        return this.props.closed;
     }
-    leave(end) {
-        this.props.end = end;
+    get id() {
+        return this.props.id;
     }
-    isEndMarker(depth) {
-        if (this.props.depth === undefined)
-            return false;
-        return depth <= this.props.depth;
+    get title() {
+        return this.props.title;
     }
-    isInside() {
-        return this.props.start !== undefined && this.props.end === undefined;
+    toString() {
+        const reference = this.props.crossReference
+            ? `${this.props.owner}/${this.props.repo}`
+            : '';
+        return `${reference}#${this.props.id}`;
     }
-    isStartMarker(node) {
-        if (node.type === 'heading') {
-            if (node.children.length === 2) {
-                if (node.children[1].type === 'html') {
-                    const value = node.children[1].value;
-                    const m = value.match(/^<!-- (?<meta>.*) -->$/);
-                    if (m !== null && m.groups) {
-                        const { [this.props.flag]: { value: traceability } = {
-                            value: false
-                        } } = structured_field_values_1.decodeDict(m.groups.meta);
-                        if (traceability) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-        return false;
+    equals(subtask) {
+        return Object.keys(subtask).every(key => this.props[key] === subtask[key]);
     }
 }
-exports.Section = Section;
+exports.Subtask = Subtask;
 
 
 /***/ }),
 
-/***/ 4531:
+/***/ 209:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.SectionExporter = void 0;
-class SectionExporter {
-    constructor(depth) {
-        this.depth = depth;
-    }
-    headingString(increment) {
-        return '#'.repeat(this.depth + increment);
-    }
-    heading() {
-        return `${this.headingString(0)} Traceability <!-- traceability -->\n<!-- Section created by CompliancePal. Do not edit -->\n`;
-    }
-    resolvedBy(pullRequest) {
-        return pullRequest
-            ? `${this.headingString(1)} Resolved by\n\nChange request #${pullRequest.number} will close this issue.`
-            : null;
-    }
-    testCases({ testCases }) {
-        const details = testCases
-            .map((testCase) => {
-            return this.testCaseDetails(testCase);
-        })
-            .join('\n');
-        return testCases.length > 0
-            ? `${this.headingString(1)} Test cases\n\n${details}\n`
-            : null;
-    }
-    testCaseDetails(testCase) {
-        return `<details>
-<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
-\n
-\`\`\`gherkin
-Feature: ${testCase.feature}
-\n
-  Scenario: ${testCase.title}
-${testCase.steps
-            .map(step => {
-            // process.stdout.write(JSON.stringify(step))
-            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
-        })
-            .join('\n')}
-\`\`\`
-\n
-</details>
-`;
-    }
-    leftPad(text, length) {
-        return text.padStart(length);
-    }
-    capitalize(input) {
-        return input[0].toUpperCase() + input.substring(1);
+exports.ValueObject = void 0;
+class ValueObject {
+    constructor(props) {
+        this.props = Object.freeze(props);
     }
 }
-exports.SectionExporter = SectionExporter;
+exports.ValueObject = ValueObject;
 
 
 /***/ }),
@@ -844,6 +617,214 @@ exports.styleMarkdownOutput = styleMarkdownOutput;
 
 /***/ }),
 
+/***/ 5710:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
+
+"use strict";
+
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.BodyIssueRels = void 0;
+// import * as core from '@actions/core'
+const unified_1 = __importDefault(__webpack_require__(5075));
+const remark_parse_1 = __importDefault(__webpack_require__(4859));
+const remark_frontmatter_1 = __importDefault(__webpack_require__(762));
+const remark_gfm_1 = __importDefault(__webpack_require__(5772));
+const remark_stringify_1 = __importDefault(__webpack_require__(7114));
+const unist_util_visit_1 = __importDefault(__webpack_require__(199));
+const yaml_1 = __importDefault(__webpack_require__(3552));
+const Section_1 = __webpack_require__(7980);
+const SectionExporter_1 = __webpack_require__(1120);
+const unified_2 = __webpack_require__(4079);
+const Subtask_1 = __webpack_require__(3581);
+class BodyIssueRels {
+    static parsePartOf(raw, owner, repo) {
+        const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/;
+        const res = raw.match(re);
+        return res
+            ? {
+                owner: res[2] ? res[2] : owner,
+                repo: res[3] ? res[3] : repo,
+                issue_number: parseInt(res[4])
+            }
+            : undefined;
+    }
+    static isCrossReference(ref, issue) {
+        return issue.repo !== ref.repo || issue.owner !== ref.owner;
+    }
+    get processor() {
+        return (unified_1.default()
+            .use(remark_parse_1.default)
+            .use(remark_gfm_1.default)
+            .use(remark_frontmatter_1.default, [
+            {
+                type: 'yaml',
+                marker: {
+                    open: '-',
+                    close: '-'
+                },
+                anywhere: true
+            }
+        ])
+            .use(unified_2.styleMarkdownOutput, {
+            comment: SectionExporter_1.SectionExporter.COMMENT
+        })
+            //TODO: investigate why we need the previous plugin
+            .use(remark_stringify_1.default
+        // , {
+        // extensions: [
+        //   {
+        //     bullet: '-',
+        //     listItemIndent: 'one',
+        //     rule: '-',
+        //     join: [
+        //       (first: Node, second: Node) => {
+        //         // do not add space between the heading and the comment
+        //         if (
+        //           first.type === 'heading' &&
+        //           second.type === 'html' &&
+        //           second.value === SectionExporter.COMMENT
+        //         ) {
+        //           core.debug('handled comment')
+        //           // join signature does not allow to return number
+        //           return (0 as unknown) as boolean
+        //         }
+        //         // do not add space in frontmatter
+        //         if (
+        //           first.type === 'thematicBreak' &&
+        //           second.type === 'paragraph'
+        //         ) {
+        //           // join signature does not allow to return number
+        //           return (0 as unknown) as boolean
+        //         }
+        //         return true
+        //       }
+        //     ]
+        //   }
+        // ]
+        // }
+        ));
+    }
+    load(issue) {
+        const tree = this.processor.parse(issue.body);
+        this.findsPartOf(issue, tree);
+        this.findsSubtasks(issue, tree);
+    }
+    save(issue) {
+        const stringifier = this.processor.use(() => {
+            return tree => {
+                const section = new Section_1.Section('traceability');
+                const exporter = new SectionExporter_1.SectionExporter(2);
+                const sectionHeading = exporter.heading();
+                const resolvedBySection = exporter.resolvedBy(issue.resolvedBy);
+                const testCasesSection = issue.resolvedBy && exporter.testCases(issue.resolvedBy);
+                const subtasksSection = `### Related issues\n\n${Array.from(issue.subtasks.values())
+                    .map(_subtask => `* [${_subtask.closed ? 'x' : ' '}] ${_subtask.title} (${_subtask.toString()})`)
+                    .join('\n')}\n`;
+                const processor = this.processor;
+                unist_util_visit_1.default(tree, 'heading', (node, position) => {
+                    if (section.isStartMarker(node)) {
+                        section.enter(position, node.depth);
+                    }
+                    else {
+                        // inside section
+                        if (section.isInside()) {
+                            // end
+                            if (section.isEndMarker(node.depth)) {
+                                section.leave(position);
+                            }
+                        }
+                    }
+                });
+                if (section.isInside()) {
+                    section.leave(tree.children.length);
+                }
+                if (!section.found)
+                    return tree;
+                const before = tree.children.filter((node, index) => index < (section.start || 0));
+                const after = tree.children.filter((node, index) => index >= (section.end || tree.children.length));
+                const sectionTree = processor.parse([sectionHeading, resolvedBySection, testCasesSection, subtasksSection]
+                    .filter(part => part !== null)
+                    .join('\n'));
+                const result = processor.parse('');
+                result.children = before.concat(sectionTree.children).concat(after);
+                return result;
+            };
+        });
+        const sectionBody = stringifier.processSync(issue.body);
+        issue.body = sectionBody.contents.trim();
+    }
+    findsPartOf(issue, tree) {
+        unist_util_visit_1.default(tree, 'yaml', node => {
+            // core.debug(JSON.stringify(node))
+            const patched = node.value.replace(/partOf: (#[0-9]*)/, 'partOf: "$1"');
+            const data = yaml_1.default.parse(patched);
+            if (data && data.partOf) {
+                issue.partOf = BodyIssueRels.parsePartOf(data.partOf, issue.owner, issue.repo);
+            }
+        });
+    }
+    findsSubtasks(issue, tree) {
+        const section = new Section_1.Section('traceability');
+        unist_util_visit_1.default(tree, ['heading', 'list'], (node, position) => {
+            switch (node.type) {
+                case 'heading':
+                    // no information
+                    if (section.isStartMarker(node)) {
+                        section.enter(position, node.depth);
+                    }
+                    else {
+                        // inside section
+                        if (section.isInside()) {
+                            // end
+                            if (section.isEndMarker(node.depth)) {
+                                section.leave(position);
+                            }
+                        }
+                    }
+                    break;
+                case 'list':
+                    if (section.isInside()) {
+                        unist_util_visit_1.default(node, 'listItem', item => {
+                            unist_util_visit_1.default(item, 'paragraph', p => {
+                                unist_util_visit_1.default(p, 'text', text => {
+                                    const raw = text.value
+                                        .split('(')[1]
+                                        .replace(')', '');
+                                    const title = text.value.split(' (')[0];
+                                    const parsed = BodyIssueRels.parsePartOf(raw, issue.owner, issue.repo);
+                                    if (parsed) {
+                                        const { issue_number, owner, repo } = parsed;
+                                        issue.subtasks.set(raw, 
+                                        //TODO: find a better way to create subtasks
+                                        Subtask_1.Subtask.create({
+                                            id: issue_number.toString(),
+                                            title,
+                                            closed: !!item.checked,
+                                            owner,
+                                            repo,
+                                            crossReference: BodyIssueRels.isCrossReference({
+                                                owner,
+                                                repo,
+                                                issue_number
+                                            }, issue)
+                                        }));
+                                    }
+                                });
+                            });
+                        });
+                    }
+            }
+        });
+    }
+}
+exports.BodyIssueRels = BodyIssueRels;
+
+
+/***/ }),
+
 /***/ 2724:
 /***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
@@ -914,6 +895,136 @@ class IssuesRepo {
     }
 }
 exports.IssuesRepo = IssuesRepo;
+
+
+/***/ }),
+
+/***/ 7980:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.Section = void 0;
+const structured_field_values_1 = __webpack_require__(2363);
+class Section {
+    constructor(flag) {
+        this.props = {
+            flag
+        };
+    }
+    get start() {
+        return this.props.start;
+    }
+    get end() {
+        return this.props.end;
+    }
+    get found() {
+        return this.props.start !== undefined && this.props.end !== undefined;
+    }
+    get depth() {
+        return this.props.depth;
+    }
+    enter(start, depth) {
+        this.props.start = start;
+        this.props.depth = depth;
+    }
+    leave(end) {
+        this.props.end = end;
+    }
+    isEndMarker(depth) {
+        if (this.props.depth === undefined)
+            return false;
+        return depth <= this.props.depth;
+    }
+    isInside() {
+        return this.props.start !== undefined && this.props.end === undefined;
+    }
+    isStartMarker(node) {
+        if (node.type === 'heading') {
+            if (node.children.length === 2) {
+                if (node.children[1].type === 'html') {
+                    const value = node.children[1].value;
+                    const m = value.match(/^<!-- (?<meta>.*) -->$/);
+                    if (m !== null && m.groups) {
+                        const { [this.props.flag]: { value: traceability } = {
+                            value: false
+                        } } = structured_field_values_1.decodeDict(m.groups.meta);
+                        if (traceability) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+}
+exports.Section = Section;
+
+
+/***/ }),
+
+/***/ 1120:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.SectionExporter = void 0;
+class SectionExporter {
+    constructor(depth) {
+        this.depth = depth;
+    }
+    headingString(increment) {
+        return '#'.repeat(this.depth + increment);
+    }
+    heading() {
+        return `${this.headingString(0)} Traceability <!-- traceability -->\n${SectionExporter.COMMENT}\n`;
+    }
+    resolvedBy(pullRequest) {
+        return pullRequest
+            ? `${this.headingString(1)} Resolved by\n\nChange request #${pullRequest.number} will close this issue.`
+            : null;
+    }
+    testCases({ testCases }) {
+        const details = testCases
+            .map((testCase) => {
+            return this.testCaseDetails(testCase);
+        })
+            .join('\n');
+        return testCases.length > 0
+            ? `${this.headingString(1)} Test cases\n\n${details}\n`
+            : null;
+    }
+    testCaseDetails(testCase) {
+        return `<details>
+<summary>:cucumber: ${testCase.feature} - ${testCase.title}</summary>
+\n
+\`\`\`gherkin
+Feature: ${testCase.feature}
+\n
+  Scenario: ${testCase.title}
+${testCase.steps
+            .map(step => {
+            // process.stdout.write(JSON.stringify(step))
+            return `${this.leftPad(this.capitalize(step.keyword), 11)} ${step.stepText}`;
+        })
+            .join('\n')}
+\`\`\`
+\n
+</details>
+`;
+    }
+    leftPad(text, length) {
+        return text.padStart(length);
+    }
+    capitalize(input) {
+        return input[0].toUpperCase() + input.substring(1);
+    }
+}
+exports.SectionExporter = SectionExporter;
+SectionExporter.COMMENT = '<!-- Section created by CompliancePal. Do not edit -->';
 
 
 /***/ }),

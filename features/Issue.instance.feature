@@ -1,6 +1,7 @@
 Feature: Issue instance
 
         @issue-7
+        @issue-25
         Scenario: Subtasks in the placeholder
             Given event body
                   """

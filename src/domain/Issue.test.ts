@@ -1,8 +1,9 @@
 import {IssuesOpenedEvent} from '@octokit/webhooks-definitions/schema'
 import {defineFeature, loadFeature} from 'jest-cucumber'
 import openEventPayload from '../payloads/event-opened.json'
-import {IPartOf, Issue, Subtask} from './Issue'
+import {Reference, Issue} from './Issue'
 import {scenarioNameTemplate} from '../utils/test'
+import {Subtask} from './Subtask'
 
 const instance = loadFeature('./features/Issue.instance.feature', {
   scenarioNameTemplate
@@ -26,32 +27,54 @@ defineFeature(instance, test => {
     })
 
     then('instance detects the subtasks', () => {
-      expect(issue.subtasks).toEqual(
-        new Map([
-          [
-            '#1',
-            {
-              closed: true,
-              id: '1',
-              removed: false,
-              title: 'Closed title',
-              owner: 'CompliancePal',
-              repo: 'issue-tracer'
-            }
-          ],
-          [
-            '#2',
-            {
-              closed: false,
-              id: '2',
-              removed: false,
-              title: 'Open title',
-              owner: 'CompliancePal',
-              repo: 'issue-tracer'
-            }
-          ]
-        ])
-      )
+      expect(issue.subtasks.size).toEqual(2)
+      expect(
+        issue.subtasks.get('#1')?.equals({
+          closed: true,
+          id: '1',
+          title: 'Closed title',
+          owner: 'CompliancePal',
+          repo: 'issue-tracer',
+          crossReference: false
+        })
+      ).toBeTruthy()
+      expect(
+        issue.subtasks.get('#2')?.equals({
+          closed: false,
+          id: '2',
+          title: 'Open title',
+          owner: 'CompliancePal',
+          repo: 'issue-tracer',
+          crossReference: false
+        })
+      ).toBeTruthy()
+
+      // expect(issue.subtasks).toEqual(
+      //   new Map([
+      //     [
+      //       '#1',
+      //       {
+      //         closed: true,
+      //         id: '1',
+      //         removed: false,
+      //         title: 'Closed title',
+      //         owner: 'CompliancePal',
+      //         repo: 'issue-tracer'
+      //       }
+      //     ],
+      //     [
+      //       '#2',
+      //       {
+      //         closed: false,
+      //         id: '2',
+      //         removed: false,
+      //         title: 'Open title',
+      //         owner: 'CompliancePal',
+      //         repo: 'issue-tracer'
+      //       }
+      //     ]
+      //   ])
+      // )
     })
   })
 
@@ -105,7 +128,7 @@ defineFeature(instance, test => {
     })
 
     and('new subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create(JSON.parse(docString))
     })
 
     when('subtask added', () => {
@@ -134,7 +157,10 @@ defineFeature(instance, test => {
     })
 
     and('existing cross reference subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create({
+        ...JSON.parse(docString),
+        crossReference: true
+      })
     })
 
     when('subtask added', () => {
@@ -163,7 +189,7 @@ defineFeature(instance, test => {
     })
 
     and('subtask', docString => {
-      subtask = JSON.parse(docString) as Subtask
+      subtask = Subtask.create(JSON.parse(docString))
     })
 
     when('added', () => {
@@ -220,7 +246,7 @@ defineFeature(instance, test => {
         owner: 'CompliancePal',
         repo: 'issue-tracer',
         issue_number: 123
-      } as IPartOf)
+      } as Reference)
       expect(issue.hasParent()).toBeTruthy()
     })
   })
@@ -238,93 +264,6 @@ defineFeature(instance, test => {
     then('issue identifies the reference', () => {
       expect(issue.partOf).toBeTruthy()
       expect(issue.hasParent()).toBeTruthy()
-    })
-  })
-})
-
-const classMethods = loadFeature('./features/Issue.class.feature', {
-  scenarioNameTemplate
-})
-
-defineFeature(classMethods, test => {
-  test('parsePartOf with local reference', ({given, and, when, then}) => {
-    let reference: string
-    let owner: string
-    let repo: string
-    let result: IPartOf | undefined
-
-    given('reference', (docString: string) => {
-      reference = docString
-    })
-
-    and('owner', (docString: string) => {
-      owner = docString
-    })
-
-    and('repo', docString => {
-      repo = docString
-    })
-
-    when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)
-    })
-
-    then('match', docString => {
-      expect(result).toEqual(JSON.parse(docString))
-    })
-  })
-
-  test('parsePartOf with remote reference', ({given, and, when, then}) => {
-    let reference: string
-    let owner: string
-    let repo: string
-    let result: IPartOf | undefined
-
-    given('reference', (docString: string) => {
-      reference = docString
-    })
-
-    and('owner', (docString: string) => {
-      owner = docString
-    })
-
-    and('repo', docString => {
-      repo = docString
-    })
-
-    when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)
-    })
-
-    then('match', docString => {
-      expect(result).toEqual(JSON.parse(docString))
-    })
-  })
-
-  test('parsePartOf does not find invalid', ({given, and, when, then}) => {
-    let reference: string
-    let owner: string
-    let repo: string
-    let result: IPartOf | undefined
-
-    given('reference', (docString: string) => {
-      reference = docString
-    })
-
-    and('owner', (docString: string) => {
-      owner = docString
-    })
-
-    and('repo', docString => {
-      repo = docString
-    })
-
-    when('parsing', () => {
-      result = Issue.parsePartOf(reference, owner, repo)
-    })
-
-    then('match', () => {
-      expect(result).toEqual(undefined)
     })
   })
 })

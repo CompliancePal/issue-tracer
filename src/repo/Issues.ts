@@ -1,7 +1,7 @@
 import * as github from '@actions/github'
 import {Issue as GitHubIssue} from '@octokit/webhooks-definitions/schema'
 
-import {IPartOf, Issue} from '../domain/Issue'
+import {Reference, Issue} from '../domain/Issue'
 
 export class IssuesRepo {
   token: string
@@ -10,7 +10,11 @@ export class IssuesRepo {
     this.token = token
   }
 
-  async get({owner, repo, issue_number}: IPartOf): Promise<Issue | undefined> {
+  async get({
+    owner,
+    repo,
+    issue_number
+  }: Reference): Promise<Issue | undefined> {
     try {
       const gh = github.getOctokit(this.token)
 

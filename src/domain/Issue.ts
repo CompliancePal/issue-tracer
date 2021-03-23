@@ -2,43 +2,16 @@ import {
   IssuesOpenedEvent,
   Issue as GitHubIssue
 } from '@octokit/webhooks-definitions/schema'
-import unified from 'unified'
-import markdown from 'remark-parse'
-import frontmatter from 'remark-frontmatter'
-import stringify from 'remark-stringify'
-import gfm from 'remark-gfm'
-import YAML from 'yaml'
-import visit from 'unist-util-visit'
-// import filter from 'unist-util-filter'
-import {Parent} from 'unist'
 import {Entity} from './Entity'
-import {Section} from './Section'
-import {styleMarkdownOutput} from '../plugins/unified'
 import {IssuesRepo} from '../repo/Issues'
 import {PullRequest} from './PullRequest'
-import {SectionExporter} from './exporters/SectionExporter'
+import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
+import {Subtask} from './Subtask'
 
-export interface IPartOf {
+export interface Reference {
   owner: string
   repo: string
   issue_number: number
-}
-
-export interface Subtask {
-  id: string
-  title: string
-  closed: boolean
-  removed: boolean
-  repo: string
-  owner: string
-}
-
-const subtaskToString = (
-  subtask: Subtask,
-  isCrossReference: boolean
-): string => {
-  const reference = isCrossReference ? `${subtask.owner}/${subtask.repo}` : ''
-  return `${reference}#${subtask.id}`
 }
 
 export class Issue extends Entity<GitHubIssue> {
@@ -49,7 +22,9 @@ export class Issue extends Entity<GitHubIssue> {
       owner: {login: owner}
     }
   }: IssuesOpenedEvent): Issue {
-    return new Issue(issue, owner, repo)
+    const result = new Issue(issue, owner, repo)
+
+    return result
   }
 
   static fromApiPayload(
@@ -57,31 +32,17 @@ export class Issue extends Entity<GitHubIssue> {
     owner: string,
     repo: string
   ): Issue {
-    return new Issue(payload, owner, repo)
+    const result = new Issue(payload, owner, repo)
+
+    return result
   }
 
-  static parsePartOf(
-    raw: string,
-    owner: string,
-    repo: string
-  ): IPartOf | undefined {
-    const re = /^(([-\w]+)\/([-\w]+))?#([0-9]+)$/
-    const res = raw.match(re)
-
-    return res
-      ? {
-          owner: res[2] ? res[2] : owner,
-          repo: res[3] ? res[3] : repo,
-          issue_number: parseInt(res[4])
-        }
-      : undefined
-  }
-
-  readonly partOf?: IPartOf
   readonly owner: string
   readonly repo: string
+  partOf?: Reference
   subtasks: Map<string, Subtask>
   resolvedBy?: PullRequest
+  relsBackend: RelsRepo<Issue>
 
   protected constructor(issue: GitHubIssue, owner: string, repo: string) {
     super(issue)
@@ -89,8 +50,12 @@ export class Issue extends Entity<GitHubIssue> {
     this.props = issue
     this.owner = owner
     this.repo = repo
-    this.partOf = this.detectsPartOf()
-    this.subtasks = this.detectsSubIssues()
+    // this.partOf = this.detectsPartOf()
+    this.subtasks = new Map<string, Subtask>()
+
+    const rels = new BodyIssueRels()
+    this.relsBackend = rels
+    this.detectsRelationships()
   }
 
   get body(): string {
@@ -144,6 +109,7 @@ export class Issue extends Entity<GitHubIssue> {
     return this.owner !== issue.owner || this.repo !== issue.repo
   }
 
+  //TODO: investigate how to create subtask also from issue
   addSubtask(subtask: Subtask): void {
     const id = this.isCrossReference(subtask)
       ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
@@ -153,218 +119,22 @@ export class Issue extends Entity<GitHubIssue> {
 
     this.subtasks.set(id, subtask)
 
-    this.updateBody()
+    this.updateRelationships()
   }
 
-  addResolvedBy(pullRequest: PullRequest): void {
+  setResolvedBy(pullRequest: PullRequest): Issue {
     this.resolvedBy = pullRequest
 
-    this.updateBody()
+    this.updateRelationships()
+
+    return this
   }
 
-  protected updateBody(): void {
-    const stringifier = unified()
-      .use(markdown)
-      .use(gfm)
-      .use(styleMarkdownOutput, {
-        comment: '<!-- Section created by CompliancePal. Do not edit -->'
-      })
-      .use(() => {
-        return tree => {
-          const section = new Section('traceability')
-          const exporter = new SectionExporter(2)
-
-          const sectionHeading = exporter.heading()
-
-          const resolvedBySection = exporter.resolvedBy(this.resolvedBy)
-
-          const testCasesSection =
-            this.resolvedBy && exporter.testCases(this.resolvedBy)
-
-          const subtasksSection = `### Related issues\n\n${Array.from(
-            this.subtasks.values()
-          )
-            .map(
-              _subtask =>
-                `* [${_subtask.closed ? 'x' : ' '}] ${
-                  _subtask.title
-                } (${subtaskToString(
-                  _subtask,
-                  this.isCrossReference(_subtask)
-                )})`
-            )
-            .join('\n')}\n`
-
-          const processor = unified().use(markdown).use(gfm)
-
-          visit(tree, 'heading', (node: Parent, position: number) => {
-            if (section.isStartMarker(node)) {
-              section.enter(position, node.depth as number)
-            } else {
-              // inside section
-              if (section.isInside()) {
-                // end
-                if (section.isEndMarker(node.depth as number)) {
-                  section.leave(position)
-                }
-              }
-            }
-          })
-
-          if (section.isInside()) {
-            section.leave((tree as Parent).children.length)
-          }
-
-          if (!section.found) return tree
-
-          const before = (tree as Parent).children.filter(
-            (node, index) => index < (section.start || 0)
-          )
-
-          const after = (tree as Parent).children.filter(
-            (node, index) =>
-              index >= (section.end || (tree as Parent).children.length)
-          )
-
-          const sectionTree = processor.parse(
-            [
-              sectionHeading,
-              resolvedBySection,
-              testCasesSection,
-              subtasksSection
-            ]
-              .filter(part => part !== null)
-              .join('\n')
-          ) as Parent
-
-          const result = processor.parse('') as Parent
-
-          result.children = before.concat(sectionTree.children).concat(after)
-
-          return result
-        }
-      })
-      .use(stringify)
-
-    const sectionBody = stringifier.processSync(this.body)
-
-    // console.log(stringifier.data().toMarkdownExtensions)
-
-    this.body = (sectionBody.contents as string).trim()
+  protected updateRelationships(): void {
+    this.relsBackend.save(this)
   }
 
-  protected detectsPartOf(): IPartOf | undefined {
-    let partOf: IPartOf | undefined
-
-    unified()
-      .use(markdown)
-      .use(frontmatter, [
-        {
-          type: 'yaml',
-          marker: {
-            open: '-',
-            close: '-'
-          },
-          anywhere: true
-        }
-      ])
-      .use(() => {
-        return tree => {
-          visit(tree, 'yaml', node => {
-            const patched = (node.value as string).replace(
-              /partOf: (#[0-9]*)/,
-              'partOf: "$1"'
-            )
-
-            node.data = YAML.parse(patched)
-          })
-        }
-      })
-      .use(() => {
-        return tree => {
-          visit(tree, 'yaml', node => {
-            if (node.data && node.data.partOf) {
-              partOf = Issue.parsePartOf(
-                node.data.partOf as string,
-                this.owner,
-                this.repo
-              )
-            }
-          })
-        }
-      })
-      .use(stringify)
-      .processSync(this.props.body)
-
-    return partOf
-  }
-
-  protected detectsSubIssues(): Map<string, Subtask> {
-    const subtasks = new Map<string, Subtask>()
-
-    unified()
-      .use(markdown)
-      .use(gfm)
-      .use(stringify)
-      .use(() => {
-        return tree => {
-          const section = new Section('traceability')
-
-          visit(tree, ['heading', 'list'], (node: Parent, position: number) => {
-            switch (node.type) {
-              case 'heading':
-                // no information
-                if (section.isStartMarker(node)) {
-                  section.enter(position, node.depth as number)
-                } else {
-                  // inside section
-                  if (section.isInside()) {
-                    // end
-                    if (section.isEndMarker(node.depth as number)) {
-                      section.leave(position)
-                    }
-                  }
-                }
-                break
-              case 'list':
-                if (section.isInside()) {
-                  visit(node, 'listItem', item => {
-                    visit(item, 'paragraph', p => {
-                      visit(p, 'text', text => {
-                        const raw = (text.value as string)
-                          .split('(')[1]
-                          .replace(')', '')
-
-                        const title = (text.value as string).split(' (')[0]
-
-                        const parsed = Issue.parsePartOf(
-                          raw,
-                          this.owner,
-                          this.repo
-                        )
-
-                        if (parsed) {
-                          const {issue_number, owner, repo} = parsed
-
-                          subtasks.set(raw, {
-                            id: issue_number.toString(),
-                            title,
-                            removed: false,
-                            closed: !!item.checked,
-                            owner,
-                            repo
-                          })
-                        }
-                      })
-                    })
-                  })
-                }
-            }
-          })
-        }
-      })
-      .processSync(this.props.body)
-
-    return subtasks
+  protected detectsRelationships(): void {
+    this.relsBackend.load(this)
   }
 }

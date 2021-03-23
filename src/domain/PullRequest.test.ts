@@ -26,7 +26,7 @@ defineFeature(features, test => {
     mock.restore()
   })
 
-  test.only('Finds requirements to be resolved', ({given, when, then, and}) => {
+  test('Finds requirements to be resolved', ({given, when, then, and}) => {
     given('PR body', docString => {
       event = getPREvent(docString)
     })
