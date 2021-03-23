@@ -1,7 +1,7 @@
 import {ValueObject} from './core/ValueObject'
 
 export interface SubtaskProps {
-  [k: string]: unknown
+  [k: string]: string | boolean
   id: string
   title: string
   closed: boolean

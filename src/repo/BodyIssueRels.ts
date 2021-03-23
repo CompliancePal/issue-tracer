@@ -11,7 +11,6 @@ import {Issue, Reference} from '../domain/Issue'
 import {Section} from './Section'
 import {SectionExporter} from './exporters/SectionExporter'
 import {styleMarkdownOutput} from '../plugins/unified'
-import {Subtask} from '../domain/Subtask'
 
 export interface RelsRepo<T> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -240,25 +239,14 @@ export class BodyIssueRels implements RelsRepo<Issue> {
                   if (parsed) {
                     const {issue_number, owner, repo} = parsed
 
-                    issue.subtasks.set(
-                      raw,
-                      //TODO: find a better way to create subtasks
-                      Subtask.create({
-                        id: issue_number.toString(),
-                        title,
-                        closed: !!item.checked,
-                        owner,
-                        repo,
-                        crossReference: BodyIssueRels.isCrossReference(
-                          {
-                            owner,
-                            repo,
-                            issue_number
-                          },
-                          issue
-                        )
-                      })
-                    )
+                    const subtask = Issue.fromReference({
+                      id: issue_number.toString(),
+                      owner,
+                      repo,
+                      state: item.checked ? 'closed' : 'open',
+                      title
+                    })
+                    issue.addSubtask(subtask, false)
                   }
                 })
               })

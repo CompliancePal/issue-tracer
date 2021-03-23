@@ -1,3 +1,4 @@
+// import * as core from '@actions/core'
 import {
   IssuesOpenedEvent,
   Issue as GitHubIssue
@@ -35,6 +36,36 @@ export class Issue extends Entity<GitHubIssue> {
     const result = new Issue(payload, owner, repo)
 
     return result
+  }
+
+  /**
+   * Creates an issue from a reference extracted from the issue body or from another backend
+   */
+  static fromReference({
+    id,
+    owner,
+    repo,
+    title,
+    state
+  }: {
+    id: string
+    title: string
+    state: 'open' | 'closed' | undefined
+    repo: string
+    owner: string
+  }): Issue {
+    return new Issue(
+      ({
+        number: parseInt(id),
+        id: parseInt(id),
+        state,
+        body: '',
+        labels: [],
+        title
+      } as unknown) as GitHubIssue,
+      owner,
+      repo
+    )
   }
 
   readonly owner: string
@@ -109,17 +140,42 @@ export class Issue extends Entity<GitHubIssue> {
     return this.owner !== issue.owner || this.repo !== issue.repo
   }
 
-  //TODO: investigate how to create subtask also from issue
-  addSubtask(subtask: Subtask): void {
-    const id = this.isCrossReference(subtask)
-      ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
-      : subtask.id.startsWith('#')
-      ? subtask.id
-      : `#${subtask.id}`
+  /**
+   *
+   * @param issue issue to be added as subtask
+   * @param updateBody triggers issue body update
+   */
+  addSubtask(issue: Issue, updateBody = true): void {
+    const subtask = Subtask.create({
+      id: issue.number.toString(),
+      title: issue.title,
+      closed: issue.closed,
+      owner: issue.owner,
+      repo: issue.repo,
+      crossReference: this.isCrossReference(issue)
+    })
 
-    this.subtasks.set(id, subtask)
+    this.addSubtaskInternal(subtask)
 
-    this.updateRelationships()
+    if (updateBody) {
+      this.updateRelationships()
+    }
+  }
+
+  //TODO: investigate how to create a subtask smarter for internal use
+  private addSubtaskInternal(subtask: Subtask): void {
+    // const id = this.isCrossReference(subtask)
+    //   ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
+    //   : subtask.id.startsWith('#')
+    //   ? subtask.id
+    //   : `#${subtask.id}`
+
+    // core.debug(`${subtask.toString()} - ${subtask.id}`)
+    // core.debug(subtask.id)
+
+    // if (!(subtask instanceof Subtask)) throw new Error()
+
+    this.subtasks.set(subtask.toString(), subtask)
   }
 
   setResolvedBy(pullRequest: PullRequest): Issue {
@@ -130,7 +186,7 @@ export class Issue extends Entity<GitHubIssue> {
     return this
   }
 
-  protected updateRelationships(): void {
+  private updateRelationships(): void {
     this.relsBackend.save(this)
   }
 
