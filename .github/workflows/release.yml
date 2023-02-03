@@ -19,7 +19,7 @@ jobs:
         run: npm run package
       - name: Update major version tag (e.g., v1)
         # if: github.ref == 'refs/heads/main'
-        if: github.ref == '30-renovation'
+        if: github.ref == 'refs/heads/30-renovation'
         run: git tag -f v${VERSION} && git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
