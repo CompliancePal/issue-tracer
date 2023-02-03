@@ -23,5 +23,5 @@ jobs:
         run: git tag -f v${VERSION} && git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: github.ref
+          VERSION: ${{ 1 }}
           # VERSION: ${{ steps.semantic.outputs.new_release_VERSION }}
