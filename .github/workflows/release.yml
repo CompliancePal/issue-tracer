@@ -1,4 +1,4 @@
-name: 'build-test'
+name: 'release'
 on: # rebuild any PRs and main branch changes
   push:
     branches:
@@ -18,7 +18,8 @@ jobs:
       - name: package
         run: npm run package
       - name: Update major version tag (e.g., v1)
-        if: github.ref == 'refs/heads/master'
+        # if: github.ref == 'refs/heads/main'
+        if: github.ref == '30-renovation'
         run: git tag -f v${VERSION} && git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
