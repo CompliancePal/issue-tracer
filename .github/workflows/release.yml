@@ -21,7 +21,7 @@ jobs:
         with:
           add: 'dist'
           tag: 'v1 --force'
-          push: '--force'
+          tag_push: '--force'
       # - name: Update major version tag (e.g., v1)
       #   # if: github.ref == 'refs/heads/main'
       #   if: github.ref == 'refs/heads/30-renovation'
