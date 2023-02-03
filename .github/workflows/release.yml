@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
@@ -20,6 +20,7 @@ jobs:
       - uses: EndBug/add-and-commit@v9
         with:
           add: 'dist'
+          push: false
           tag: 'v1 --force'
           tag_push: '--force'
       # - name: Update major version tag (e.g., v1)

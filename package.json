@@ -4,6 +4,7 @@
   "description": "Traceability for GitHub projects",
   "main": "packages/action/lib/main.js",
   "scripts": {
+    "all": "npm run all --workspace=action",
     "package": "npm run build --workspace=action && npx ncc build --source-map --license licenses.txt"
   },
   "repository": {
