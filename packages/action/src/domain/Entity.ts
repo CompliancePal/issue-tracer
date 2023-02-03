@@ -1,3 +1,6 @@
+/**
+ * @internal
+ */
 export class Entity<T> {
   protected props: T
 
