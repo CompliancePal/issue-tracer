@@ -2,6 +2,7 @@
   "name": "issue-tracer",
   "version": "1.0.0",
   "description": "Traceability for GitHub projects",
+  "private": true,
   "main": "packages/action/lib/main.js",
   "scripts": {
     "all": "npm run all --workspace=action",
@@ -21,7 +22,6 @@
   },
   "homepage": "https://github.com/CompliancePal/issue-tracer#readme",
   "workspaces": [
-    "apps/*",
     "packages/*"
   ],
   "dependencies": {
