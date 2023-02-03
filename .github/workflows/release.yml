@@ -17,15 +17,24 @@ jobs:
         run: npm install
       - name: package
         run: npm run package
-      - name: Update major version tag (e.g., v1)
-        # if: github.ref == 'refs/heads/main'
-        if: github.ref == 'refs/heads/30-renovation'
-        run: |
-          git tag -f v${VERSION}
-          git add dist
-          git commit -m "added action distribution"
-          git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ 1 }}
-          # VERSION: ${{ steps.semantic.outputs.new_release_VERSION }}
+      - uses: EndBug/add-and-commit@v9
+        with:
+          add: 'dist'
+          tag: 'v1 --force'
+          push: '--force'
+      # - name: Update major version tag (e.g., v1)
+      #   # if: github.ref == 'refs/heads/main'
+      #   if: github.ref == 'refs/heads/30-renovation'
+      #   run: |
+      #     git config --global user.email "you@example.com"
+      #     git config --global user.name "Your Name"
+      #     git config --global commiter.email "you@example.com"
+      #     git config --global commiter.name "Your Name"
+      #     git tag -f v${VERSION}
+      #     git add dist
+      #     git commit -m "added action distribution"
+      #     git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     VERSION: ${{ 1 }}
+      #     # VERSION: ${{ steps.semantic.outputs.new_release_VERSION }}
