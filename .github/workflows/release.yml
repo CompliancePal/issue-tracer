@@ -1,0 +1,26 @@
+name: 'build-test'
+on: # rebuild any PRs and main branch changes
+  push:
+    branches:
+      - 30-renovation
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: install
+        run: npm install
+      - name: package
+        run: npm run package
+      - name: Update major version tag (e.g., v1)
+        if: github.ref == 'refs/heads/master'
+        run: git tag -f v${VERSION} && git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: github.ref
+          # VERSION: ${{ steps.semantic.outputs.new_release_VERSION }}

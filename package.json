@@ -1,0 +1,29 @@
+{
+  "name": "issue-tracer",
+  "version": "1.0.0",
+  "description": "Traceability for GitHub projects",
+  "main": "packages/action/lib/main.js",
+  "scripts": {
+    "package": "npm run build --workspace=action && npx ncc build --source-map --license licenses.txt"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CompliancePal/issue-tracer.git"
+  },
+  "keywords": [
+    "traceability"
+  ],
+  "author": "Vlad Știrbu",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/CompliancePal/issue-tracer/issues"
+  },
+  "homepage": "https://github.com/CompliancePal/issue-tracer#readme",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "dependencies": {
+    "@vercel/ncc": "^0.36.1"
+  }
+}
