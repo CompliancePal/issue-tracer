@@ -1,5 +1,5 @@
 name: 'release'
-on: # rebuild any PRs and main branch changes
+on:
   push:
     branches:
       - 30-renovation
@@ -17,6 +17,8 @@ jobs:
           node-version: 16
       - name: install
         run: npm install
+      - name: test
+        run: npm test --workspace=action
       - name: package
         run: npm run package
       - uses: EndBug/add-and-commit@v9
@@ -25,7 +27,6 @@ jobs:
           add: 'dist'
           push: false
       - name: Update major version tag (e.g., v1)
-        # if: github.ref == 'refs/heads/main'
         if: github.ref == 'refs/heads/30-renovation'
         run: |
           git tag -f v${VERSION}
