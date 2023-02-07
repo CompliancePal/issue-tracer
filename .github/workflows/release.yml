@@ -2,7 +2,7 @@ name: 'release'
 on:
   push:
     branches:
-      - 30-renovation
+      - main
 
 jobs:
   build:
@@ -22,12 +22,12 @@ jobs:
       - name: package
         run: npm run package
       - uses: EndBug/add-and-commit@v9
-        if: github.ref == 'refs/heads/30-renovation'
+        if: github.ref == 'refs/heads/main'
         with:
           add: 'dist'
           push: false
       - name: Update major version tag (e.g., v1)
-        if: github.ref == 'refs/heads/30-renovation'
+        if: github.ref == 'refs/heads/main'
         run: |
           git tag -f v${VERSION}
           git push --force origin refs/tags/v${VERSION}:refs/tags/v${VERSION}
