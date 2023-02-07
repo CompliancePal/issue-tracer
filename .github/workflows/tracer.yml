@@ -15,6 +15,6 @@ jobs:
       - uses: invisionapp/private-action-loader@v3
         with:
           pal-repo-token: ${{ steps.retriever.outputs.token }}
-          pal-repo-name: CompliancePal/issue-tracer@main
+          pal-repo-name: CompliancePal/issue-tracer@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
