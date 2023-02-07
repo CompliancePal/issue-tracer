@@ -1,0 +1,25 @@
+{
+  "Documentation": {
+    "title": "Documentation",
+    "href": "https://issue-tracer.compliancepal.eu"
+  },
+  "GitHub": {
+    "href": "https://github.com/CompliancePal",
+    "newWindow": true
+  },
+  "index": {
+    "title": "Issue tracer",
+    "display": "hidden"
+  },
+  "intro": "Introduction",
+  "about": {
+    "title": "About",
+    "type": "page"
+  },
+  "contact": {
+    "title": "Contact ↗",
+    "type": "page",
+    "href": "https://twitter.com/CompliancePal",
+    "newWindow": true
+  }
+}
