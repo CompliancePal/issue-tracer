@@ -38,10 +38,6 @@ export class BodyIssueRels implements RelsRepo<Issue> {
       : undefined
   }
 
-  static isCrossReference(ref: Reference, issue: Issue): boolean {
-    return issue.repo !== ref.repo || issue.owner !== ref.owner
-  }
-
   protected get processor(): Processor {
     return (
       unified()
@@ -60,7 +56,7 @@ export class BodyIssueRels implements RelsRepo<Issue> {
         .use(styleMarkdownOutput, {
           comment: SectionExporter.COMMENT
         })
-        //TODO: investigate why we need the previous plugin
+        //TODO: #29 investigate why we need the previous plugin
         .use(
           stringify
           // , {

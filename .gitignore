@@ -100,3 +100,8 @@ Thumbs.db
 # Ignore built ts files
 __tests__/runner/*
 lib/**/*
+
+# project
+*.pdf
+*.svg
+_src

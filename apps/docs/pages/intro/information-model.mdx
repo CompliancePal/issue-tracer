@@ -1,0 +1,36 @@
+import Mermaid from '../../components/mermaid'
+
+# Information model
+
+<Mermaid graphDefinition={`
+flowchart RL
+  need["user need"]
+  req[requirement]
+  test["test case"]
+  %%element["architecture element"]
+  pr["change request"]
+
+%%need -->|impacted by| pr
+
+req --> |refines| need
+%%req --> element
+req --> |part of| req
+%% req --> |implemented by| pr
+pr --> |resolves| req
+
+test --> |validates| need
+test --> |verifies| req
+%% test -.- pr
+
+%%element --> |input| req
+%%element --> |part of| element`} />
+
+The information model is implemented using a combination of capabilities provided by GitHub, as follows:
+
+| entity         | handled by | implementation                   |
+| -------------- | ---------- | -------------------------------- |
+| user need      | GitHub     | issue tagged `need`              |
+| requirement    | GitHub     | issue tagged `system`/`software` |
+| change request | GitHub     | pull request                     |
+
+{/* | test case      | manufacturer | gherkin feature                  | */}

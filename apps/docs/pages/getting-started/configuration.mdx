@@ -1,0 +1,78 @@
+import {Callout} from 'nextra-theme-docs'
+
+# Repository configurations
+
+The following configurations must be performed in the repository.
+
+## Setting the action
+
+The following action must be added to the repository to enable the traceability.
+
+```yaml filename=".github/workflows/tracer.yml"
+name: Issue tracing
+on:
+  issues:
+  pull_request:
+
+jobs:
+  tracer:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Issue tracer
+        uses: CompliancePal/issue-tracer@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+The `GITHUB_TOKEN` secret has repository scope. If you refernce issues in other repostories, you need to provide a `PAT` that has the followig scopes:
+
+- repo
+
+## configure issue templates
+
+The following issue template enables tracing for all issues refined from it.
+
+```markdown filename=".github/ISSUE_TEMPLATE/template.md"
+---
+title: Issue with traceability
+---
+
+...
+
+## Traceability <!-- traceability -->
+
+<!-- Traceability content will be added here by tracer action -->
+
+...
+```
+
+The template can have any structure. The `tracer` action maintains the traceability information under the section marked with the "heading" with `<!-- traceability -->`.
+
+<Callout type="info" emoji="ℹ️">
+  You must add at least one issue template configured for traceability in the
+  repository.
+</Callout>
+
+<Callout type="info" emoji="ℹ️">
+  Enabling the traceability with issue templates provides a consistent
+  experience. With tracing enabled by default for all relevant issues, you avoid
+  errors that can occur from manually crafting your issues.
+</Callout>
+
+## Configure pull request template
+
+The following template enables tracing the issues that is resolved by the pull request
+
+```markdown filename=".github/pull_request_template.md"
+Resolves #{requirementNumber}.
+
+<!-- The rest of the template -->
+```
+
+Marking which change request resolves a particular issue is achieved using the GitHub's functionality of [cross references with keywords](https://docs.github.com/en/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword).
+
+<Callout type="info" emoji="ℹ️">
+  Pull requests must use a [pull request
+  template](https://docs.github.com/en/github/building-a-strong-community/creating-a-pull-request-template-for-your-repository)
+  to make the experience consistent, and eliminate human error.
+</Callout>

@@ -1,12 +1,12 @@
 // import * as core from '@actions/core'
 import {
-  IssuesOpenedEvent,
-  Issue as GitHubIssue
+  Issue as GitHubIssue,
+  IssuesOpenedEvent
 } from '@octokit/webhooks-definitions/schema'
-import {Entity} from './Entity'
-import {IssuesRepo} from '../repo/Issues'
-import {PullRequest} from './PullRequest'
 import {BodyIssueRels, RelsRepo} from '../repo/BodyIssueRels'
+import {IssuesRepo} from '../repo/Issues'
+import {Entity} from './Entity'
+import {PullRequest} from './PullRequest'
 import {Subtask} from './Subtask'
 
 export interface Reference {
@@ -162,28 +162,16 @@ export class Issue extends Entity<GitHubIssue> {
     }
   }
 
-  //TODO: investigate how to create a subtask smarter for internal use
-  private addSubtaskInternal(subtask: Subtask): void {
-    // const id = this.isCrossReference(subtask)
-    //   ? `${subtask.owner}/${subtask.repo}#${subtask.id}`
-    //   : subtask.id.startsWith('#')
-    //   ? subtask.id
-    //   : `#${subtask.id}`
-
-    // core.debug(`${subtask.toString()} - ${subtask.id}`)
-    // core.debug(subtask.id)
-
-    // if (!(subtask instanceof Subtask)) throw new Error()
-
-    this.subtasks.set(subtask.toString(), subtask)
-  }
-
   setResolvedBy(pullRequest: PullRequest): Issue {
     this.resolvedBy = pullRequest
 
     this.updateRelationships()
 
     return this
+  }
+
+  private addSubtaskInternal(subtask: Subtask): void {
+    this.subtasks.set(subtask.toString(), subtask)
   }
 
   private updateRelationships(): void {

@@ -1,8 +1,8 @@
 ---
-title: Issue Tracer by CompliancePal
+title: Issue Tracer
 subtitle: Traceability for GitHub projects
 version: 0.1.0
-author: CompliancePal
+author: Vlad Știrbu
 classification: public
 category: user
 ---
@@ -61,12 +61,12 @@ The information model is implemented using a combination of capabilities provide
 | -------------- | ------------ | -------------------------------- |
 | user need      | GitHub       | issue tagged `need`              |
 | requirement    | GitHub       | issue tagged `system`/`software` |
-| test case      | manufacturer | gherkin feature, jest/mocha      |
+| test case      | manufacturer | gherkin feature                  |
 | change request | GitHub       | pull request                     |
 
 ## Getting started
 
-### Setting the GitHub action
+<!-- ### Setting the GitHub action
 
 The following action must be added to the repository to enable the traceability.
 
@@ -91,7 +91,7 @@ jobs:
           pal-repo-name: CompliancePal/issue-tracer@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-```
+``` -->
 
 ### Enabling requirement tracing with issue templates
 
@@ -100,8 +100,6 @@ The following issue template enables tracing for all issues build from it. The t
 ```markdown title="Issue template with enabled traceabiltity"
 ---
 title: Issue with traceability
-...
-
 ---
 
 ## Section
@@ -111,8 +109,6 @@ title: Issue with traceability
 ## Traceability <!-- traceability -->
 
 <!-- Traceability content will be added here by Issue Tracer -->
-
-## Another section
 ```
 
 Enabling the traceability with issue templates provides a consistent experience. With tracing enabled by default for all relevant issues, you avoid errors that can occur from manually crafting your issues.
@@ -126,7 +122,7 @@ Marking which change request resolves a particular requirement is achieved using
 ```markdown title="Pull request template with keyword cross reference"
 Resolves #{requirementNumber}.
 
-<!-- The rest fo the template -->
+<!-- The rest of the template -->
 ```
 
 ⚠️ Pull requests must use a [pull request template](https://docs.github.com/en/github/building-a-strong-community/creating-a-pull-request-template-for-your-repository) to make the experience consistent, and eliminate human error.
@@ -143,14 +139,13 @@ An issue issue with traceability enabled will be updated automatically by the Tr
 ...
 
 ## Traceability <!-- traceability -->
-<!-- Section created by Issue Tracer by CompliancePal. Do not edit -->
 
-## Related issues
+<!-- Section created by Issue Tracer. Do not edit -->
+
+### Related issues
 
 - [x] Closed issue title (#1)
 - [ ] Open issue title (#2)
-
-## Another section
 ```
 
 ![Issue with traceability information](images/traceability.png)
@@ -160,12 +155,17 @@ An issue issue with traceability enabled will be updated automatically by the Tr
 You can mark an requirement as a subtask by including in the issue's body a snippet indicating the parent issue number.
 
 ```markdown title="Issue body indicating that this requirement is a part of the indicated requirement"
+## Section
+
+the issue body...
+
+<!-- issue metadata at the end of the body, in yaml format -->
+
 ---
+
 partOf: #{parentIssueNumber}
 
 ---
-
-the issue body...
 ```
 
 ⚠️ Make sure that the parent issue exist and is enabled for traceability before marking an issue part of it.
@@ -192,4 +192,22 @@ Feature: Cool functionality
 
 ### All together
 
-![A complete traceability report for the current issue](images/full-report.png)
+<!-- ```mermaid title="Implementing a new feature - a user journey"
+journey
+  section Planning
+    Requirements: 5: PO
+  section Development
+    Branch: 3: Dev
+    Test cases: 5: Dev
+    Commits*: 3: Dev, Action
+  section Review
+    Pull request: 5: Dev
+    Comments: 5: CO
+    Commits*: 5: Dev, Action
+  section Merge
+    Release: 5: Dev, Action
+``` -->
+
+In the end, viewing an issue on the GitHub website shows the embedded report with the related issues, associated test cases and the change request that implements the requirement.
+
+![Embedded traceability report for an issue](images/full-report.png)
